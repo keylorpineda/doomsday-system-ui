@@ -109,8 +109,10 @@ export interface SceneHandles {
   buildingMeshes: THREE.Object3D[]
   /** Salida de exploración: 3 figuras caminan de la torre al gate (~4s). */
   playExplorationAnimation: () => void
-  /** Traslado: puerta del garaje sube y el camión sale por el gate (~6.5s). */
+  /** Traslado: sube la cortina del taller y el camión sale por el portón. */
   playTransferAnimation: () => void
+  /** Posición del camión mientras sale (la cinemática lo sigue); null en reposo. */
+  getCinematicFocus: () => THREE.Vector3 | null
   /** Fija el comportamiento del reflector de la torre según los datos. */
   setWatchtowerMode: (mode: WatchtowerMode) => void
   /** Objetos que el paso de datos reactivos manipula directamente. */

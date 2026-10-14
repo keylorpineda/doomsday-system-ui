@@ -12,7 +12,10 @@ import type { CameraState } from "../useThreeScene"
 import { use3DStore } from "@/store/use3DStore"
 
 const setup = () => {
-  const handles = { playTransferAnimation: vi.fn() } as unknown as SceneHandles
+  const handles = {
+    playTransferAnimation: vi.fn(),
+    getCinematicFocus: vi.fn(() => null),
+  } as unknown as SceneHandles
   const marker = { setHidden: vi.fn() } as unknown as ProfileMarker
   const handlesRef = { current: handles }
   const markerRef = { current: marker }

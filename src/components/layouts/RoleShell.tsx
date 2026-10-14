@@ -3,6 +3,8 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react"
 
 import type { ComponentType, ReactNode } from "react"
 
+import { use3DStore } from "@/store/use3DStore"
+
 // El campamento 3D vive como FONDO permanente de cada panel de rol: se carga una
 // vez (chunk pesado de three.js diferido) y no se desmonta, así que cambiar de
 // sección no lo recarga. Las secciones se abren como ventanas encima.
@@ -66,6 +68,19 @@ export default function RoleShell({
 }: RoleShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Al crear un traslado se dispara la cinemática del camión en el campamento de
+  // fondo: cerramos la ventana de la sección para que se vea (y para que la
+  // escena, pausada mientras está tapada, vuelva a renderizar).
+  const onCloseWindowRef = useRef(onCloseWindow)
+  onCloseWindowRef.current = onCloseWindow
+  useEffect(
+    () =>
+      use3DStore.subscribe((state, prev) => {
+        if (state.transferCinematic > prev.transferCinematic) onCloseWindowRef.current()
+      }),
+    [],
+  )
 
   useEffect(() => {
     if (!menuOpen) return
@@ -244,6 +259,8 @@ export default function RoleShell({
                 key={campId}
                 campId={campId}
                 embedded
+                // La ventana de sección la tapa por completo: no renderizar
+                paused={showWindow}
                 onBuildingSelect={onBuildingSelect}
                 onClose={onCloseWindow}
               />

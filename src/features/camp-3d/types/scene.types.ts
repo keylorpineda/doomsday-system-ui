@@ -64,6 +64,11 @@ export interface CampScene3DProps {
    * pestaña/ventana correspondiente sin cambiar de ruta.
    */
   onBuildingSelect?: (buildingId: string) => void
+  /**
+   * Pausa el render mientras algo tapa la escena (ventana de sección, mapa).
+   * La escena sigue montada y se reanuda al instante al volver a mostrarse.
+   */
+  paused?: boolean
 }
 
 /**

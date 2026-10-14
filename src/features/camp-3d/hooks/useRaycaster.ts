@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import * as THREE from "three"
 
+import { useLatestRef } from "./useLatestRef"
 import { BUILDINGS } from "../constants/buildings.config"
 
 import type { ThreeContext } from "./useThreeScene"
@@ -46,12 +47,9 @@ export function useRaycaster(
   targetsRef: RefObject<THREE.Object3D[]>,
   { onBuildingClick, onHoverChange, extraBuildings }: UseRaycasterOptions = {},
 ) {
-  const onClickRef = useRef(onBuildingClick)
-  const onHoverRef = useRef(onHoverChange)
-  const extraRef = useRef(extraBuildings)
-  onClickRef.current = onBuildingClick
-  onHoverRef.current = onHoverChange
-  extraRef.current = extraBuildings
+  const onClickRef = useLatestRef(onBuildingClick)
+  const onHoverRef = useLatestRef(onHoverChange)
+  const extraRef = useLatestRef(extraBuildings)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -131,5 +129,5 @@ export function useRaycaster(
       canvas.removeEventListener("mousedown", onMouseDown)
       canvas.removeEventListener("click", onClick)
     }
-  }, [canvasRef, contextRef, targetsRef])
+  }, [canvasRef, contextRef, targetsRef, onClickRef, onHoverRef, extraRef])
 }

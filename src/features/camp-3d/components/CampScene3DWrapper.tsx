@@ -24,7 +24,6 @@ class SceneErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryStat
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
     console.error("[CampScene3D] error al renderizar la escena:", error, info)
   }
 
@@ -68,7 +67,7 @@ function LoadingSkeleton() {
     }
     const t = setTimeout(tick, 600)
     return () => clearTimeout(t)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="camp3d-loading">

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import {
   CINE_BLEND_OUT,
   CINE_DURATION,
+  CINE_KEYS,
   CINE_REST,
   updateCinematicCamera,
 } from "../transferCinematic"
@@ -18,11 +19,11 @@ const camera = (): CameraState => ({
 })
 
 describe("updateCinematicCamera", () => {
-  it("starts at the first keyframe, close to the garage", () => {
+  it("starts at the first keyframe, looking into the garage", () => {
     const cam = camera()
     expect(updateCinematicCamera(0, cam)).toBe(false)
-    expect(cam.radius).toBe(7)
-    expect(cam.target.toArray()).toEqual([18.9, 1.0, 11.9])
+    expect(cam.radius).toBe(CINE_KEYS[0].radius)
+    expect(cam.target.toArray()).toEqual(CINE_KEYS[0].target)
   })
 
   it("keeps running through the scripted keyframes and the blend-out", () => {

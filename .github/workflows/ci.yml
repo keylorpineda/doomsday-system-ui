@@ -31,22 +31,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Versión de pnpm tomada de "packageManager" en package.json
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci --no-audit --no-fund
+      - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint
+        run: pnpm lint
 
       - name: Spell check
-        run: npm run spell
+        run: pnpm spell
 
       # `build` corre `tsc` (type check) y luego `vite build`
       - name: Type check + build
-        run: npm run build
+        run: pnpm build
 
   test:
     name: Unit tests (${{ matrix.shard }}/2)
@@ -59,15 +62,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Versión de pnpm tomada de "packageManager" en package.json
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci --no-audit --no-fund
+      - run: pnpm install --frozen-lockfile
 
       - name: Vitest
-        run: npx vitest run --shard=${{ matrix.shard }}/2
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/2
 
   # Único check a marcar como requerido en la protección de ramas
   ci:

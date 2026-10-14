@@ -30,7 +30,12 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/consistent-type-imports": "error",
     "no-console": "off",
-    quotes: ["error", "double"],
+    // Prettier es el dueño del formato: usa comillas simples cuando el texto
+    // contiene dobles, y con `semi: false` antepone `;` a las líneas que
+    // empiezan con `(`. Sin esto, lint-staged (eslint --fix → prettier)
+    // reintroduce errores de lint en cada commit.
+    quotes: ["error", "double", { avoidEscape: true }],
+    "no-extra-semi": "off",
 
     // TypeScript ya verifica rutas — evitamos falsos positivos con alias @/
     "import/no-unresolved": "off",

@@ -98,7 +98,7 @@ const AdminLayout = () => {
   }, [])
 
   return (
-    <div className="h-screen max-h-screen bg-[#0d0c0b] text-[#e0d8cc] relative overflow-hidden font-mono flex flex-col">
+    <div className="app-enter h-screen max-h-screen bg-[#0d0c0b] text-[#e0d8cc] relative overflow-hidden font-mono flex flex-col">
       {/* SCANLINE OVERLAY */}
       <div
         className="absolute inset-0 pointer-events-none z-50 opacity-[0.035]"

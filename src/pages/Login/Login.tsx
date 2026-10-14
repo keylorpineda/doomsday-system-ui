@@ -16,8 +16,6 @@ export default function Login() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((state) => state.setAuth)
   const [loginStatus, setLoginStatus] = useState<LoginStatus>("waiting")
-  // Credentials the operator typed — shown on the granted ID card.
-  const [enteredCredentials, setEnteredCredentials] = useState({ username: "", password: "" })
   const rafRef = useRef<number | null>(null)
 
   // MotionValues bypass React state â€” zero re-renders on mouse move
@@ -86,7 +84,6 @@ export default function Login() {
     try {
       const response = await login({ username: u, password: p })
       setAuth(response.access_token, response.user, response.refresh_token)
-      setEnteredCredentials({ username: u, password: p })
       finalizeLogin(response.user.role)
     } catch {
       setLoginStatus("denied")
@@ -413,14 +410,9 @@ export default function Login() {
       {/* Cinematic Vignette overlay for depth replacing boxy shadow */}
       <div className="absolute inset-0 z-40 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_30%,rgba(2,2,2,0.9)_100%)] mix-blend-multiply" />
 
-      {/* Access-granted cinematic: ID card with the entered credentials + blast
-          doors opening onto green safe-zone light. Self-contained, full-screen. */}
-      {loginStatus === "granted" && (
-        <AccessGrantedOverlay
-          username={enteredCredentials.username}
-          password={enteredCredentials.password}
-        />
-      )}
+      {/* Acceso concedido: el gafete se pasa por el lector del puesto de control
+          y se abre la compuerta blindada. No muestra credenciales. */}
+      {loginStatus === "granted" && <AccessGrantedOverlay />}
 
       {/* Badge Login placed within the 3d environment */}
       <div className="relative z-50">

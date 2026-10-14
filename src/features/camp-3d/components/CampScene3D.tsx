@@ -156,9 +156,9 @@ export default function CampScene3D({
     markerRef.current?.setPosition(marker.pos)
   }, [marker])
 
-  // Paso Reactivo — conecta endpoints del backend con las refs visuales.
-  // Pasamos el rol para no pedir endpoints que el backend deniega (403) al worker.
-  useSceneReactiveData(campId, handlesRef, role)
+  // Paso Reactivo — refleja el estado del campamento en la escena. Se actualiza
+  // por eventos del backend (WebSocket) y no consulta mientras está pausada.
+  useSceneReactiveData(campId, handlesRef, role, paused)
 
   useRaycaster(canvasRef, contextRef, targetsRef, {
     onBuildingClick: (building) => {

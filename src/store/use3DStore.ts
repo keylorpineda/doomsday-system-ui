@@ -7,8 +7,9 @@ import type { Scene3DState } from "@/features/camp-3d/types/scene.types"
  *
  * Sin persistencia: la vista 3D es efímera y siempre arranca apagada al
  * recargar. La transición desde el mapa (Paso 8) y el botón "Vista 3D"
- * (Paso 0) escriben aquí; Admin/Worker/CampLeader leen `is3DActive` para
- * decidir si montan la escena.
+ * (Paso 0) escriben aquí. `is3DActive` funciona como un evento: los layouts lo
+ * consumen con `useOpen3DRequest` (cierran la ventana que tapa el campamento 3D
+ * de fondo) y lo vuelven a `false`.
  */
 export const use3DStore = create<Scene3DState>((set) => ({
   is3DActive: false,

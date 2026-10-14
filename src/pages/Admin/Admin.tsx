@@ -18,6 +18,7 @@ import { CampProvider, useCamp } from "./context/CampContext"
 import { SessionProvider } from "./context/SessionContext"
 
 import AlertsBanner from "@/components/ui/AlertsBanner"
+import { useOpen3DRequest } from "@/features/camp-3d/hooks/useOpen3DRequest"
 import { useAlertSocket } from "@/hooks/useAlertSocket"
 import "./AdminTheme.css"
 import "./Admin.css"
@@ -38,7 +39,7 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
 
 const AdminLayout = () => {
   const { logout } = useAuth()
-  const { activeCampId } = useCamp()
+  const { activeCampId, setActiveCampId } = useCamp()
   useAlertSocket(activeCampId)
   const navigate = useNavigate()
   const location = useLocation()
@@ -55,6 +56,13 @@ const AdminLayout = () => {
 
   // Cerrar una ventana vuelve a la vista del campamento 3D (la "base").
   const closeWindow = () => navigate("/admin/camp")
+
+  // "Entrar al 3D" desde el mapa táctico (o tras el login): cambia al campamento
+  // pedido y vuelve a la vista base, donde el campamento 3D es el fondo.
+  useOpen3DRequest((campId) => {
+    if (campId && campId !== activeCampId) setActiveCampId(campId)
+    navigate("/admin/camp")
+  })
 
   const WINDOW_TITLES: Record<string, string> = {
     dashboard: "TABLERO DE CONTROL",

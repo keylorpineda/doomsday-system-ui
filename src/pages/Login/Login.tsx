@@ -62,9 +62,8 @@ export default function Login() {
     // las credenciales, las puertas abriéndose con luz verde y el fundido final.
     setTimeout(() => {
       // Cualquier rol aterriza directamente en la vista 3D del campamento: se
-      // enciende el store antes de navegar para que el Camp3DOverlay del
-      // layout correspondiente monte la escena y reproduzca la animación de
-      // entrada. El store no persiste, así que esto solo ocurre al iniciar
+      // enciende el store antes de navegar; el layout lo atiende con
+      // useOpen3DRequest y muestra el campamento 3D de fondo. El store no persiste, así que esto solo ocurre al iniciar
       // sesión, no en recargas posteriores.
       const campId = useAuthStore.getState().user?.camp_id
       if (campId) {

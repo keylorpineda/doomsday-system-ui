@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
 import { useTokenStore } from "@/store/useAuthStore"
@@ -20,7 +20,9 @@ let disconnectTimer: ReturnType<typeof setTimeout> | null = null
  */
 export const useSocket = (): Socket | null => {
   const token = useTokenStore((s) => s.token)
-  const socketRef = useRef<Socket | null>(null)
+  // Estado (no ref): el componente se re-renderiza cuando el socket existe, en
+  // vez de recibir null en el primer render y no enterarse después.
+  const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -45,7 +47,7 @@ export const useSocket = (): Socket | null => {
       })
     }
 
-    socketRef.current = globalSocket
+    setSocket(globalSocket)
     refCount += 1
 
     return () => {
@@ -64,5 +66,5 @@ export const useSocket = (): Socket | null => {
     }
   }, [token])
 
-  return socketRef.current
+  return socket
 }

@@ -2905,6 +2905,19 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
   truckGroup.rotation.y = 0 // mirando hacia la puerta (z+)
   root.add(truckGroup)
 
+  // Oculta/muestra solo la carrocería; las luces del camión quedan SIEMPRE en
+  // la escena (apagadas con intensidad 0). Three.js sólo cuenta las luces de
+  // objetos visibles y el número de luces forma parte de la clave de cada
+  // shader: ocultar el grupo entero obligaba a recompilar todos los materiales
+  // de la escena en ese frame (el "congelón" al final de la cinemática).
+  let truckBodyVisible = true
+  const setTruckBodyVisible = (visible: boolean) => {
+    truckBodyVisible = visible
+    truckGroup.children.forEach((child) => {
+      if (!(child as THREE.Light).isLight) child.visible = visible
+    })
+  }
+
   // --- TIRE SMOKE (Drift) ---
   // Partículas instanciadas de humo de ruedas — más grandes y con opacidad variable
   const tireSmokeGeo = new THREE.SphereGeometry(0.38, 6, 4)
@@ -3082,7 +3095,7 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
     if (transferQueued) {
       transferQueued = false
       transferStart = t
-      truckGroup.visible = true
+      setTruckBodyVisible(true)
       truckGroup.scale.setScalar(1)
       tkWheelAngle = 0
       // Posicionar dentro del garaje en el punto 0 de la curva
@@ -3167,7 +3180,7 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
       const tailProg = Math.min(Math.max((tk + 0.08) / 0.4, 0), 1)
       // Parpadeo de ignición mientras headProg < 0.55 (el rango de arranque)
       const ignitionFlicker = headProg < 0.55 ? 0.5 + Math.random() * 0.5 : 1.0
-      if (truckGroup.visible) {
+      if (truckBodyVisible) {
         tkLight.intensity = headProg * ignitionFlicker * 22
         tkSpotL.intensity = headProg * ignitionFlicker * 18
         tkSpotR.intensity = headProg * ignitionFlicker * 18
@@ -3263,8 +3276,8 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
 
       // ── El camión se desvanece en la niebla a partir del final de la curva ──
       if (tk >= DRIVE_END) {
-        if (truckGroup.visible) {
-          truckGroup.visible = false
+        if (truckBodyVisible) {
+          setTruckBodyVisible(false)
           // Restablecer la posición de reposo dentro del garaje para la próxima vez
           truckGroup.position.set(GJX - 0.2, 0, GJZ - 0.8)
           truckGroup.rotation.set(0, 0, 0)
@@ -3279,7 +3292,7 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
       if (tk >= 8.5) {
         transferStart = -1
         // Volver a mostrar el camión estacionado en el garaje
-        truckGroup.visible = true
+        setTruckBodyVisible(true)
         truckGroup.position.set(GJX - 0.2, 0, GJZ - 0.8)
         truckGroup.rotation.set(0, 0, 0)
         truckGroup.quaternion.identity()

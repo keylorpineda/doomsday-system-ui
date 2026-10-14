@@ -115,6 +115,8 @@ const AdminLayout = () => {
                 key={activeCampId}
                 campId={activeCampId}
                 embedded
+                // Ventana de sección o mapa encima: la escena no se ve, no renderizar
+                paused={!isCampHome}
                 onClose={() => navigate("/admin/camp")}
               />
             </Suspense>

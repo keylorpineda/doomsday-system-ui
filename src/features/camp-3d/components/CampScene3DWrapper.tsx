@@ -125,6 +125,7 @@ export default function CampScene3DWrapper({
   onClose,
   embedded,
   onBuildingSelect,
+  paused,
 }: CampScene3DProps) {
   const [loading, setLoading] = useState(true)
 
@@ -138,6 +139,7 @@ export default function CampScene3DWrapper({
           onClose={onClose}
           embedded={embedded}
           onBuildingSelect={onBuildingSelect}
+          paused={paused}
           onReady={() => setLoading(false)}
         />
         {loading ? <LoadingSkeleton /> : null}

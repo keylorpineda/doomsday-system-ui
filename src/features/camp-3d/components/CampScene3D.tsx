@@ -155,7 +155,8 @@ const MINIMAP_ZONES = [
   { x: 10, z: 4, col: 0xffbb00 },
 ]
 
-const drawMinimap = (mmX: CanvasRenderingContext2D, cam: CameraState) => {
+/** Dibuja la parte estática del minimapa (todo menos el indicador de cámara). */
+const drawMinimapBase = (mmX: CanvasRenderingContext2D) => {
   mmX.clearRect(0, 0, 140, 140)
   mmX.fillStyle = "#030703"
   mmX.fillRect(0, 0, 140, 140)
@@ -213,6 +214,30 @@ const drawMinimap = (mmX: CanvasRenderingContext2D, cam: CameraState) => {
   mmX.arc(70 + 5.6 * 3.2, 70 + 11 * 3.8, 2, 0, Math.PI * 2)
   mmX.fillStyle = "#ff7700"
   mmX.fill()
+}
+
+// El fondo del minimapa no cambia: se pinta una sola vez en un canvas fuera de
+// pantalla y cada actualización sólo copia ese bitmap y dibuja la cámara (antes
+// se recreaban gradientes y ~20 figuras cada 3 frames).
+let minimapBase: HTMLCanvasElement | null = null
+
+const drawMinimap = (mmX: CanvasRenderingContext2D, cam: CameraState) => {
+  if (!minimapBase) {
+    const base = document.createElement("canvas")
+    base.width = 140
+    base.height = 140
+    const baseCtx = base.getContext("2d")
+    if (baseCtx) {
+      drawMinimapBase(baseCtx)
+      minimapBase = base
+    }
+  }
+  if (minimapBase) {
+    mmX.clearRect(0, 0, 140, 140)
+    mmX.drawImage(minimapBase, 0, 0)
+  } else {
+    drawMinimapBase(mmX)
+  }
   // camera indicator
   const cx = Math.max(5, Math.min(135, 70 + cam.target.x * 3.2))
   const cy = Math.max(5, Math.min(135, 70 + cam.target.z * 3.8))
@@ -272,6 +297,34 @@ let lastConsumedCinematic = 0
 
 const smoothstep = (x: number) => x * x * (3 - 2 * x)
 
+// Vector reutilizado para proyectar el marcador flotante (evita una
+// asignación por frame mientras se hace hover sobre un edificio).
+const markerWorldPos = new THREE.Vector3()
+
+/**
+ * Compila los shaders de TODA la escena, incluidos los objetos que arrancan
+ * ocultos (figuras de exploración…). `renderer.compile` ignora lo invisible, así
+ * que sin esto esos materiales se compilaban de forma síncrona la primera vez
+ * que aparecían y congelaban la animación.
+ */
+function precompileScene(ctx: {
+  scene: THREE.Scene
+  camera: THREE.Camera
+  renderer: THREE.WebGLRenderer
+}) {
+  const hidden: THREE.Object3D[] = []
+  ctx.scene.traverse((obj) => {
+    if (!obj.visible) {
+      hidden.push(obj)
+      obj.visible = true
+    }
+  })
+  ctx.renderer.compile(ctx.scene, ctx.camera)
+  hidden.forEach((obj) => {
+    obj.visible = false
+  })
+}
+
 /** Interpola camState a lo largo de CINE_KEYS en el instante `ct` (s). */
 function driveCinematicCamera(ct: number, cam: CameraState) {
   let a = CINE_KEYS[0]
@@ -307,6 +360,7 @@ export default function CampScene3D({
   onReady,
   embedded,
   onBuildingSelect,
+  paused = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const minimapRef = useRef<HTMLCanvasElement | null>(null)
@@ -316,7 +370,12 @@ export default function CampScene3D({
   const handlesRef = useRef<SceneHandles | null>(null)
   const targetsRef = useRef<THREE.Object3D[]>([])
   const frameRef = useRef(0)
-  const profileRef = useRef<{ group: THREE.Group; light: THREE.PointLight } | null>(null)
+  const profileRef = useRef<{
+    group: THREE.Group
+    light: THREE.PointLight
+    zone: THREE.Mesh
+    hidden: boolean
+  } | null>(null)
 
   const navigate = useNavigate()
   const [hovered, setHovered] = useState<BuildingConfig | null>(null)
@@ -401,8 +460,14 @@ export default function CampScene3D({
 
   const startCinematic = useCallback(() => {
     if (!handlesRef.current || cineActiveRef.current) return // ya activa, ignorar
-    // Ocultar el marcador de perfil para que no aparezca en la cinemática
-    if (profileRef.current) profileRef.current.group.visible = false
+    // Ocultar el marcador de perfil para que no aparezca en la cinemática.
+    // Sólo se oculta la caja y se apaga la luz (intensidad 0): ocultar el grupo
+    // cambiaría el número de luces y forzaría a recompilar todos los shaders.
+    if (profileRef.current) {
+      profileRef.current.hidden = true
+      profileRef.current.zone.visible = false
+      profileRef.current.light.intensity = 0
+    }
     handlesRef.current.playTransferAnimation()
     cineActiveRef.current = true
     cineStartRef.current = null
@@ -414,12 +479,6 @@ export default function CampScene3D({
       const handles = buildCampScene(ctx.scene, campId)
       handlesRef.current = handles
 
-      // Precompila TODOS los shaders de la escena antes de arrancar el loop.
-      // Sin esto, la primera vez que la cámara cinemática enfoca el garaje y el
-      // camión, Three.js compila esos shaders de forma síncrona y "congela" un
-      // par de frames justo al inicio de la animación. Pagarlo aquí (mientras el
-      // overlay aún se abre) hace que el traslado arranque fluido.
-      ctx.renderer.compile(ctx.scene, ctx.camera)
       // Exponer en window para pruebas desde consola del navegador
       ;(window as unknown as Record<string, unknown>).__playTransfer = () => startCinematic()
 
@@ -472,8 +531,15 @@ export default function CampScene3D({
       )
       group.add(zone, light)
       ctx.scene.add(group)
-      profileRef.current = { group, light }
+      profileRef.current = { group, light, zone, hidden: false }
       targets.push(zone)
+
+      // Precompila TODOS los shaders antes de arrancar el loop, ya con la escena
+      // completa (incluida la luz del marcador de perfil: compilar antes de
+      // agregarla dejaba la compilación obsoleta). Sin esto, la primera vez que
+      // la cámara enfoca el garaje o aparecen las figuras, Three.js compila de
+      // forma síncrona y congela varios frames.
+      precompileScene(ctx)
 
       targetsRef.current = targets
       onReady?.()
@@ -520,21 +586,24 @@ export default function CampScene3D({
           if (blendT >= 1) {
             cineActiveRef.current = false
             // Restaurar marcador de perfil al terminar el blend
-            if (profileRef.current) profileRef.current.group.visible = true
+            if (profileRef.current) {
+              profileRef.current.hidden = false
+              profileRef.current.zone.visible = true
+            }
             setShowCine(false)
           }
         }
       }
       handlesRef.current?.animate(t)
       const profile = profileRef.current
-      if (profile) profile.light.intensity = 0.7 + Math.sin(t * 2.2) * 0.35
+      if (profile && !profile.hidden) profile.light.intensity = 0.7 + Math.sin(t * 2.2) * 0.35
       // Update floating marker above hovered building
       const hb = hoveredBuildingRef.current
       const markerEl = markerElemRef.current
       if (hb && markerEl && canvasRef.current) {
         const canvas = canvasRef.current
         const p = hb.position3D
-        const wv = new THREE.Vector3(p.x * SCENE_SCALE, p.y * SCENE_SCALE + 3.5, p.z * SCENE_SCALE)
+        const wv = markerWorldPos.set(p.x * SCENE_SCALE, p.y * SCENE_SCALE + 3.5, p.z * SCENE_SCALE)
         wv.project(ctx.camera)
         markerEl.style.left = `${Math.round((wv.x * 0.5 + 0.5) * canvas.clientWidth)}px`
         markerEl.style.top = `${Math.round((-wv.y * 0.5 + 0.5) * canvas.clientHeight)}px`
@@ -552,6 +621,7 @@ export default function CampScene3D({
         }
       }
     },
+    paused,
   })
 
   // Paso Reactivo — conecta endpoints del backend con las refs visuales.

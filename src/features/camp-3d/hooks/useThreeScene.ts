@@ -24,6 +24,12 @@ interface UseThreeSceneOptions {
   onReady?: (ctx: ThreeContext) => void
   /** Se llama en cada frame tras actualizar la cámara y antes de renderizar. */
   onFrame?: (t: number, ctx: ThreeContext) => void
+  /**
+   * Detiene el loop de render mientras sea `true` (p. ej. cuando una ventana
+   * tapa la escena de fondo). Evita gastar GPU en frames que nadie ve y que,
+   * además, el navegador tendría que volver a desenfocar con `backdrop-filter`.
+   */
+  paused?: boolean
 }
 
 const SPEED = 0.18
@@ -57,7 +63,7 @@ const MOVE_KEYS = new Set([
  */
 export function useThreeScene(
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  { onReady, onFrame }: UseThreeSceneOptions = {},
+  { onReady, onFrame, paused = false }: UseThreeSceneOptions = {},
 ) {
   const contextRef = useRef<ThreeContext | null>(null)
   // Mantenemos callbacks en refs para no re-montar la escena si cambian.
@@ -65,6 +71,14 @@ export function useThreeScene(
   const onFrameRef = useRef(onFrame)
   onReadyRef.current = onReady
   onFrameRef.current = onFrame
+  const pausedRef = useRef(paused)
+  // Reanuda el loop; lo define el efecto de montaje (null si no hay escena).
+  const resumeRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    pausedRef.current = paused
+    if (!paused) resumeRef.current?.()
+  }, [paused])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -207,6 +221,11 @@ export function useThreeScene(
     const rt = new THREE.Vector3()
 
     const loop = (timestamp: DOMHighResTimeStamp) => {
+      if (pausedRef.current) {
+        rafId = 0
+        lastTs = -1 // al reanudar, el primer frame no debe ver un salto de dt
+        return
+      }
       rafId = requestAnimationFrame(loop)
       const t = timestamp * 0.001 // seconds, monotonically increasing
       const dt = lastTs < 0 ? 0.016 : Math.min(timestamp * 0.001 - lastTs, 0.05)
@@ -238,23 +257,42 @@ export function useThreeScene(
       renderer.render(scene, camera)
     }
 
+    const resume = () => {
+      if (rafId === 0 && !document.hidden && !pausedRef.current) {
+        rafId = requestAnimationFrame(loop)
+      }
+    }
+    resumeRef.current = resume
+
     // ---- VISIBILITY — pause RAF when tab is hidden to save GPU/battery ----
     const onVisibility = () => {
       if (document.hidden) {
         cancelAnimationFrame(rafId)
         rafId = 0
         lastTs = -1 // reset so next frame doesn't spike dt
-      } else if (rafId === 0) {
-        rafId = requestAnimationFrame(loop)
+      } else {
+        resume()
       }
     }
     document.addEventListener("visibilitychange", onVisibility)
 
-    rafId = requestAnimationFrame(loop)
+    // Siempre se dibuja al menos un frame (aunque arranque en pausa) para que
+    // la escena no aparezca negra al quitar la pausa.
+    if (pausedRef.current) {
+      pausedRef.current = false
+      loop(performance.now())
+      cancelAnimationFrame(rafId)
+      rafId = 0
+      lastTs = -1
+      pausedRef.current = true
+    } else {
+      rafId = requestAnimationFrame(loop)
+    }
 
     // ---- CLEANUP ----
     return () => {
       cancelAnimationFrame(rafId)
+      resumeRef.current = null
       document.removeEventListener("visibilitychange", onVisibility)
       resizeObserver.disconnect()
       window.removeEventListener("resize", resize)

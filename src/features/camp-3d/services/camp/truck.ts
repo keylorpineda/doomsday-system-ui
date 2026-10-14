@@ -1,6 +1,7 @@
 import * as THREE from "three"
 
-import { TRANSFER_PATH, TRUCK_PARK } from "./layout"
+import { CAMP, GARAGE_DOOR, TRANSFER_PATH, TRUCK_PARK } from "./layout"
+import { initialDriveState, stepDrive } from "./truckDrive"
 
 import type { Kit } from "./kit"
 
@@ -8,15 +9,16 @@ import type { Kit } from "./kit"
 export const TRANSFER_TIMELINE = {
   doorOpen: [0, 1.1],
   lightsOn: [0.2, 0.8],
-  driveStart: 1.2,
-  driveDuration: 6.6,
-  /** Tras perderse en la niebla: se cierran puertas y el camión vuelve al taller. */
-  reset: 10.6,
+  /** El motor arranca y el camión empieza a moverse. */
+  driveStart: 1.0,
+  /** Antes de esto no se re-estaciona (la cinemática sigue mirando la carretera). */
+  minReturn: 16,
 } as const
 
-const DRIVE_END = TRANSFER_TIMELINE.driveStart + TRANSFER_TIMELINE.driveDuration
-/** Aceleración: arranca despacio dentro del taller y acelera en la carretera. */
-const ease = (s: number) => Math.pow(s, 1.8)
+/** Distancia libre tras la puerta del taller antes de cerrarla. */
+const DOOR_CLEARANCE = 8
+/** El portón se cierra cuando el camión ya lo dejó atrás. */
+const GATE_CLEARANCE = 18
 
 export interface TruckControls {
   setGarageDoor: (amount: number) => void
@@ -135,15 +137,13 @@ export function buildTruck(kit: Kit, controls: TruckControls) {
     wheel(0.5, x, z)
   }
 
-  // Luces reales: un foco frontal y la luz trasera. Se quedan SIEMPRE en la
+  // Luz real: sólo el foco frontal (la trasera es emisiva). Se queda SIEMPRE en la
   // escena (intensidad 0 en reposo): ocultarlas cambiaría el número de luces y
   // forzaría a recompilar todos los shaders.
   const headSpot = new THREE.SpotLight(0xfff5cc, 0, 45, Math.PI / 6, 0.45, 1.4)
   headSpot.position.set(0, 1.05, 3.8)
   headSpot.target.position.set(0, 0.3, 14)
-  const rearLight = new THREE.PointLight(0xff2200, 0, 9)
-  rearLight.position.set(0, 0.95, -3.4)
-  truck.add(headSpot, headSpot.target, rearLight)
+  truck.add(headSpot, headSpot.target)
 
   const park = () => {
     truck.position.set(TRUCK_PARK.x, 0, TRUCK_PARK.z)
@@ -151,9 +151,6 @@ export function buildTruck(kit: Kit, controls: TruckControls) {
   }
   park()
   kit.root.add(truck)
-
-  const body3D = truck.children.filter((c) => !(c as THREE.Light).isLight)
-  const setBodyVisible = (v: boolean) => body3D.forEach((c) => (c.visible = v))
 
   // Humo de los neumáticos (instanciado)
   const SMOKE = 120
@@ -174,22 +171,41 @@ export function buildTruck(kit: Kit, controls: TruckControls) {
     false,
     "centripetal",
   )
+  const curveLen = path.getLength()
   const p = new THREE.Vector3()
   const ahead = new THREE.Vector3()
-  const exhaust = new THREE.Vector3()
+  const dust = new THREE.Vector3()
+  const focus = new THREE.Vector3()
+  truck.rotation.order = "YXZ" // rumbo, luego cabeceo y balanceo sobre el eje del camión
+
   let start = -1
   let queued = false
+  let drive = initialDriveState()
   let wheelAngle = 0
-  let bodyVisible = true
-  let lastDist = 0
+  let heading = TRUCK_PARK.heading
+  let doorAmount = 0
+  let gateHeld = false
+  let away = false
   let lastT = 0
-  const curveLen = path.getLength()
 
-  const setLights = (k: number) => {
+  const setLights = (k: number, braking: boolean) => {
     headSpot.intensity = k * 26
-    rearLight.intensity = k * 6
     headMat.emissiveIntensity = k * 9
-    tailMat.emissiveIntensity = k * 5
+    // Luces de freno: más intensas al desacelerar
+    tailMat.emissiveIntensity = k * (braking ? 10 : 4)
+  }
+
+  const emitDust = (speed: number) => {
+    if (speed < 0.6 || Math.random() > 0.25 + (speed / 17) * 0.7) return
+    for (const side of [-0.85, 0.85]) {
+      dust.set(side, 0.3, -2).applyMatrix4(truck.matrixWorld)
+      const i = smokeIdx
+      smokeIdx = (smokeIdx + 1) % SMOKE
+      life[i] = 0.7 + Math.random() * 0.7
+      smokePos[i * 3] = dust.x + (Math.random() - 0.5) * 0.5
+      smokePos[i * 3 + 1] = dust.y
+      smokePos[i * 3 + 2] = dust.z
+    }
   }
 
   const animate = (t: number) => {
@@ -199,21 +215,22 @@ export function buildTruck(kit: Kit, controls: TruckControls) {
       queued = false
       start = t
       park()
-      bodyVisible = true
-      setBodyVisible(true)
+      drive = initialDriveState()
       wheelAngle = 0
-      lastDist = 0
+      heading = TRUCK_PARK.heading
+      away = false
+      gateHeld = true
       controls.holdGate("truck", true)
     }
 
-    // Humo: envejece y sube aunque el camión ya no esté (se disipa suave)
+    // Polvo/humo: envejece y sube aunque el camión ya se haya ido
     let alive = 0
     for (let i = 0; i < SMOKE; i++) {
       if (life[i] <= 0) continue
       life[i] -= dt * 0.8
-      smokePos[i * 3 + 1] += dt * 0.6
-      const s = 0.6 + (1 - Math.max(life[i], 0)) * 2.6
-      m4.makeScale(s, s * 0.7, s).setPosition(
+      smokePos[i * 3 + 1] += dt * 0.5
+      const sc = 0.6 + (1 - Math.max(life[i], 0)) * 2.8
+      m4.makeScale(sc, sc * 0.6, sc).setPosition(
         smokePos[i * 3],
         smokePos[i * 3 + 1],
         smokePos[i * 3 + 2],
@@ -226,54 +243,66 @@ export function buildTruck(kit: Kit, controls: TruckControls) {
 
     if (start < 0) return
     const tk = t - start
-    const [d0, d1] = TRANSFER_TIMELINE.doorOpen
-    controls.setGarageDoor(
-      tk < DRIVE_END ? Math.min(1, (tk - d0) / (d1 - d0)) : Math.max(0, 1 - (tk - DRIVE_END) / 1.2),
-    )
-    const [l0, l1] = TRANSFER_TIMELINE.lightsOn
-    const ignition = tk < l1 ? 0.5 + Math.random() * 0.5 : 1
-    setLights(tk < DRIVE_END ? Math.max(0, Math.min(1, (tk - l0) / (l1 - l0))) * ignition : 0)
 
-    if (tk >= TRANSFER_TIMELINE.driveStart && tk < DRIVE_END) {
-      const s = (tk - TRANSFER_TIMELINE.driveStart) / TRANSFER_TIMELINE.driveDuration
-      const u = ease(s)
+    // Cortina del taller: sube al arrancar y baja cuando el camión ya salió
+    const clearOfDoor = truck.position.x < GARAGE_DOOR.x - DOOR_CLEARANCE
+    const [d0, d1] = TRANSFER_TIMELINE.doorOpen
+    doorAmount = clearOfDoor
+      ? Math.max(0, doorAmount - dt / 1.5)
+      : Math.min(1, Math.max(doorAmount, (tk - d0) / (d1 - d0)))
+    controls.setGarageDoor(doorAmount)
+
+    if (!away && tk >= TRANSFER_TIMELINE.driveStart) {
+      drive = stepDrive(drive, truck.position.x, truck.position.z, dt)
+      const u = Math.min(drive.distance / curveLen, 1)
       path.getPointAt(u, p)
-      path.getPointAt(Math.min(u + 0.012, 1), ahead)
-      const dist = u * curveLen
-      wheelAngle += (dist - lastDist) / 0.52
-      lastDist = dist
-      truck.position.set(p.x, Math.sin(wheelAngle * 1.7) * 0.025, p.z)
-      truck.rotation.y = Math.atan2(ahead.x - p.x, ahead.z - p.z)
-      truck.rotation.z = Math.sin(wheelAngle * 0.9) * 0.012
+      path.getPointAt(Math.min(u + 4 / curveLen, 1), ahead)
+      const targetHeading = Math.atan2(ahead.x - p.x, ahead.z - p.z)
+      let dh = targetHeading - heading
+      dh = Math.atan2(Math.sin(dh), Math.cos(dh))
+      const yawRate = dt > 0 ? (dh * Math.min(1, dt * 6)) / dt : 0
+      heading += dh * Math.min(1, dt * 6)
+      wheelAngle += (drive.speed * dt) / 0.52
+      // Suspensión: rebote leve, cabeceo al acelerar/frenar y balanceo en curvas
+      truck.position.set(p.x, Math.sin(wheelAngle * 1.7) * 0.02 * Math.min(1, drive.speed / 4), p.z)
+      truck.rotation.set(
+        THREE.MathUtils.clamp(-drive.acceleration * 0.012, -0.05, 0.05),
+        heading,
+        THREE.MathUtils.clamp(-yawRate * drive.speed * 0.01, -0.06, 0.06),
+      )
       wheels.forEach((w) => (w.rotation.x = -wheelAngle))
       truck.updateMatrixWorld()
-      // Humo de escape/neumáticos detrás del camión
-      if (Math.random() < 0.7) {
-        exhaust.set(0, 0.35, -3.2).applyMatrix4(truck.matrixWorld)
-        const i = smokeIdx
-        smokeIdx = (smokeIdx + 1) % SMOKE
-        life[i] = 0.8 + Math.random() * 0.6
-        smokePos[i * 3] = exhaust.x + (Math.random() - 0.5) * 0.6
-        smokePos[i * 3 + 1] = exhaust.y
-        smokePos[i * 3 + 2] = exhaust.z
+      emitDust(drive.speed)
+
+      if (gateHeld && truck.position.z > CAMP.halfZ + GATE_CLEARANCE) {
+        gateHeld = false
+        controls.holdGate("truck", false)
       }
+      if (u >= 1) away = true // se perdió en la niebla, muy lejos por la carretera
     }
-    if (tk >= DRIVE_END && bodyVisible) {
-      bodyVisible = false
-      setBodyVisible(false)
-      controls.holdGate("truck", false)
-    }
-    if (tk >= TRANSFER_TIMELINE.reset) {
+
+    const [l0, l1] = TRANSFER_TIMELINE.lightsOn
+    const ignition = tk < l1 ? 0.5 + Math.random() * 0.5 : 1
+    setLights(
+      away ? 0 : Math.max(0, Math.min(1, (tk - l0) / (l1 - l0))) * ignition,
+      drive.acceleration < -0.5,
+    )
+
+    // Vuelve al taller sólo cuando nadie lo ve: lejos en la niebla, con la
+    // cortina cerrada y la cinemática terminada.
+    if (away && doorAmount === 0 && tk >= TRANSFER_TIMELINE.minReturn) {
       start = -1
       park()
-      bodyVisible = true
-      setBodyVisible(true)
-      controls.setGarageDoor(0)
+      setLights(0, false)
     }
   }
 
+  /** Posición actual del camión mientras sale (para que la cámara lo siga). */
+  const getFocus = () => (start >= 0 && !away ? focus.copy(truck.position) : null)
+
   return {
     animate,
+    getFocus,
     play: () => {
       if (start < 0) queued = true
     },

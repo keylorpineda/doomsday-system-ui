@@ -168,13 +168,13 @@ export function buildResidential(kit: Kit) {
     }),
     { parent: fire },
   )
-  const fireLight = kit.pointLight(0xff8a2a, 4, 14, { y: 1.2 }, fire)
+  // Sin luz real (cada luz dinámica encarece todos los shaders): la llama es
+  // emisiva y su resplandor lo da la escala animada.
 
   kit.tagBuilding("barracks", [body])
 
   const animate = (time: number) => {
     const k = 0.85 + Math.sin(time * 9.1) * 0.1 + Math.sin(time * 17.3) * 0.06
-    fireLight.intensity = 4 * k
     flame.scale.set(1, k * 1.1, 1)
   }
 

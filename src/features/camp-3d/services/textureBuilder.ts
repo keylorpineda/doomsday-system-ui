@@ -50,6 +50,16 @@ function fbm(x: number, y: number, seed = 0, octaves = 5): number {
 // ---- Canvas helpers ----
 
 function makeCtx(w: number, ht: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  // Dentro de un Web Worker no hay DOM: se dibuja en un OffscreenCanvas, que
+  // expone la misma API 2D. Así el mismo código genera texturas fuera del hilo
+  // principal (ver texture.worker.ts) sin bloquear la interfaz.
+  if (typeof document === "undefined") {
+    const off = new OffscreenCanvas(w, ht)
+    return [
+      off as unknown as HTMLCanvasElement,
+      off.getContext("2d") as unknown as CanvasRenderingContext2D,
+    ]
+  }
   const c = document.createElement("canvas")
   c.width = w
   c.height = ht
@@ -708,3 +718,16 @@ export function makeSandbagTex(rep = 4, seed = 0): TexPair {
   _texCache.set(key, result)
   return result
 }
+
+/** Generadores por tipo (los usa el worker y el cargador de texturas). */
+export const TEXTURE_GENERATORS = {
+  brick: (seed: number, weathering: number) => makeBrickTex(1, seed, weathering),
+  corrugated: (seed: number, weathering: number) => makeCorrugateTex(1, seed, weathering),
+  wood: (seed: number, weathering: number) => makeWoodTex(1, seed, weathering),
+  concrete: (seed: number, weathering: number) => makeConcreteTex(1, seed, weathering),
+  rust: (seed: number, weathering: number) => makeRustTex(1, seed, weathering),
+  ground: (seed: number, weathering: number) => makeGroundTex(1, seed, weathering),
+  sandbag: (seed: number) => makeSandbagTex(1, seed),
+} as const
+
+export type TextureKind = keyof typeof TEXTURE_GENERATORS

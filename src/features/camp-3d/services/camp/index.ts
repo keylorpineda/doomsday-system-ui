@@ -92,6 +92,7 @@ export function buildCampScene(scene: THREE.Scene, campId = "default"): SceneHan
     buildingMeshes: kit.buildingMeshes,
     playExplorationAnimation: exploration.play,
     playTransferAnimation: truck.play,
+    getCinematicFocus: truck.getFocus,
     setWatchtowerMode: (mode: WatchtowerMode) => lookout.setMode(mode),
     reactiveRefs: {
       hqFlag: command.flag,

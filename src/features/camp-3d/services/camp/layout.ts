@@ -99,7 +99,7 @@ export const ROADS: Footprint[] = [
 export const PLAZA = { x: 0, z: 4, radius: 8 } as const
 
 /** Carretera exterior que sale del portón hacia el sur. */
-export const OUTER_ROAD = { x: 0, zStart: CAMP.halfZ, zEnd: 130, width: 8 } as const
+export const OUTER_ROAD = { x: 0, zStart: CAMP.halfZ, zEnd: 260, width: 8 } as const
 
 /** Torres de la muralla: esquinas, puntos medios y las dos del portón. */
 export const WALL_TOWERS: Array<{ x: number; z: number; gate?: boolean }> = [
@@ -140,6 +140,10 @@ export const TRANSFER_PATH: Vec3[] = [
   [0, 0, CAMP.halfZ + 12],
   [0, 0, CAMP.halfZ + 34],
   [0.3, 0, CAMP.halfZ + 70],
+  // La carretera sigue hasta perderse en la niebla: el camión no desaparece,
+  // se aleja hasta que deja de verse.
+  [-0.4, 0, CAMP.halfZ + 130],
+  [0.2, 0, CAMP.halfZ + 200],
 ]
 
 /** Ruta de los exploradores: base de la torre → portón → afuera. */

@@ -43,9 +43,10 @@ describe("updateCinematicCamera", () => {
 
   it("moves the camera continuously, without jumps between frames", () => {
     const cam = camera()
+    const memory = {}
     let prev: number | null = null
     for (let t = 0; t <= CINE_DURATION + CINE_BLEND_OUT; t += 1 / 60) {
-      updateCinematicCamera(t, cam)
+      updateCinematicCamera(t, cam, null, memory)
       if (prev !== null) expect(Math.abs(cam.radius - prev)).toBeLessThan(0.5)
       prev = cam.radius
     }

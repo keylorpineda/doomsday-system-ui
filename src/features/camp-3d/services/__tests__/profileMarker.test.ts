@@ -25,23 +25,26 @@ describe("createProfileMarker", () => {
     ])
   })
 
-  it("hides without removing its light, so shaders are not recompiled", () => {
+  it("adds no dynamic light to the scene (keeps shaders cheap)", () => {
+    const scene = new THREE.Scene()
+    createProfileMarker(scene, [0, 0, 0])
+    expect(pointLights(scene)).toHaveLength(0)
+  })
+
+  it("pulses its opacity and can be hidden during the cinematic", () => {
     const scene = new THREE.Scene()
     const marker = createProfileMarker(scene, [0, 0, 0])
+    const material = marker.zone.material as THREE.MeshStandardMaterial
+
+    marker.update(0.7)
+    const a = material.opacity
+    marker.update(1.4)
+    expect(material.opacity).not.toBe(a)
 
     marker.setHidden(true)
-    marker.update(1)
-
     expect(marker.zone.visible).toBe(false)
-    const lights = pointLights(scene)
-    expect(lights).toHaveLength(1)
-    expect(lights[0].visible).toBe(true)
-    expect(lights[0].intensity).toBe(0)
-
     marker.setHidden(false)
-    marker.update(1)
     expect(marker.zone.visible).toBe(true)
-    expect(lights[0].intensity).toBeGreaterThan(0)
   })
 
   it("moves and disposes cleanly", () => {

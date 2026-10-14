@@ -78,7 +78,13 @@ export function buildSecondary(kit: Kit) {
       ry: Math.PI / 2,
       emissive: 0.7,
     })
-    kit.pointLight(0xe8f0ff, 1.6, 10, { x: f.w / 2 + 1.5, y: 2.4 }, g)
+    // Farol emisivo en la entrada (sin luz real: abarata los shaders)
+    mesh(G.box(0.3, 0.3, 0.3), M.windowCold, {
+      parent: g,
+      x: f.w / 2 + 0.4,
+      y: 2.4,
+      castShadow: false,
+    })
   }
 
   // ---- Huerto: bancales elevados con cultivos y cerca baja ----

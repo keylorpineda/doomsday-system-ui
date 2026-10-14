@@ -4,6 +4,7 @@ import { updateCinematicCamera } from "../services/transferCinematic"
 
 import type { CameraState } from "./useThreeScene"
 import type { ProfileMarker } from "../services/profileMarker"
+import type { CinematicMemory } from "../services/transferCinematic"
 import type { SceneHandles } from "../types/scene.types"
 import type { RefObject } from "react"
 
@@ -24,6 +25,7 @@ export function useTransferCinematic(
   const [showCinematic, setShowCinematic] = useState(false)
   const activeRef = useRef(false)
   const startTimeRef = useRef<number | null>(null)
+  const memoryRef = useRef<CinematicMemory>({})
   const pendingTimerRef = useRef<number | null>(null)
 
   const start = useCallback(() => {
@@ -34,6 +36,7 @@ export function useTransferCinematic(
     handles.playTransferAnimation()
     activeRef.current = true
     startTimeRef.current = null
+    memoryRef.current = {}
     setShowCinematic(true)
   }, [handlesRef, markerRef])
 
@@ -74,14 +77,20 @@ export function useTransferCinematic(
     (t: number, camState: CameraState) => {
       if (!activeRef.current) return
       if (startTimeRef.current === null) startTimeRef.current = t
-      const finished = updateCinematicCamera(t - startTimeRef.current, camState)
+      const focus = handlesRef.current?.getCinematicFocus() ?? null
+      const finished = updateCinematicCamera(
+        t - startTimeRef.current,
+        camState,
+        focus,
+        memoryRef.current,
+      )
       if (finished) {
         activeRef.current = false
         markerRef.current?.setHidden(false)
         setShowCinematic(false)
       }
     },
-    [markerRef],
+    [handlesRef, markerRef],
   )
 
   return { showCinematic, start, playPendingWhenReady, updateCamera }

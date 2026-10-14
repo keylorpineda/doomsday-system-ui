@@ -2,8 +2,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { AccessGrantedOverlay } from "../../components/AccessGrantedOverlay"
 import { BadgeLogin } from "../../components/BadgeLogin"
+import { LoginExitTransition } from "../../components/LoginExitTransition"
 import { ParticleCanvas } from "../../components/ui/ParticleCanvas"
 
 import { login } from "@/features/auth/services/auth.service"
@@ -56,8 +56,16 @@ export default function Login() {
     }
 
     setLoginStatus("granted")
-    // La secuencia <AccessGrantedOverlay> dibuja la tarjeta de reconocimiento con
-    // las credenciales, las puertas abriéndose con luz verde y el fundido final.
+    // Mientras el gafete flota hacia la luz verde (~5 s) se precarga el módulo
+    // del campamento 3D (three.js) y se generan sus texturas en un Web Worker,
+    // así el panel no espera la descarga ni el cálculo al entrar.
+    void import("@/features/camp-3d/components/CampScene3DWrapper")
+    const landingCampId = useAuthStore.getState().user?.camp_id
+    if (landingCampId) {
+      void import("@/features/camp-3d/services/textureLoader").then(({ prewarmCampTextures }) =>
+        prewarmCampTextures(String(landingCampId)),
+      )
+    }
     setTimeout(() => {
       // Cualquier rol aterriza directamente en la vista 3D del campamento: se
       // enciende el store antes de navegar; el layout lo atiende con
@@ -410,9 +418,9 @@ export default function Login() {
       {/* Cinematic Vignette overlay for depth replacing boxy shadow */}
       <div className="absolute inset-0 z-40 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(0,0,0,0)_30%,rgba(2,2,2,0.9)_100%)] mix-blend-multiply" />
 
-      {/* Acceso concedido: el gafete se pasa por el lector del puesto de control
-          y se abre la compuerta blindada. No muestra credenciales. */}
-      {loginStatus === "granted" && <AccessGrantedOverlay />}
+      {/* Acceso concedido: el gafete hace su animación y la pantalla funde a negro
+          justo antes de navegar al panel. */}
+      {loginStatus === "granted" && <LoginExitTransition />}
 
       {/* Badge Login placed within the 3d environment */}
       <div className="relative z-50">

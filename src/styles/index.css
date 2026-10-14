@@ -436,3 +436,17 @@ body {
   border: 2px solid var(--accent-critical);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
 }
+
+/* Entrada al panel tras el login: el layout aparece con un fundido suave en
+   vez de un corte (sólo opacity, sin costo de layout). */
+@keyframes app-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.app-enter {
+  animation: app-enter 0.7s ease-out both;
+}

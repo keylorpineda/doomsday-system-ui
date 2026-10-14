@@ -593,7 +593,7 @@ describe("TravelTransfers", () => {
       expect(screen.getByText(/Nueva Solicitud de Traslado/i)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText("Cancelar"))
+    fireEvent.click(screen.getByText("Descartar Borrador"))
     expect(screen.getByText("Descartar Solicitud")).toBeInTheDocument()
 
     fireEvent.click(screen.getByText("Aceptar"))
@@ -612,7 +612,7 @@ describe("TravelTransfers", () => {
       expect(screen.getByText(/Nueva Solicitud de Traslado/i)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText("Cancelar"))
+    fireEvent.click(screen.getByText("Descartar Borrador"))
     expect(screen.getByText("Descartar Solicitud")).toBeInTheDocument()
 
     fireEvent.click(screen.getAllByText("Cancelar")[0])
@@ -659,15 +659,15 @@ describe("TravelTransfers", () => {
     })
 
     fireEvent.click(screen.getByText(/Jane/i))
-    expect(screen.getByText(/1 seleccionada/i)).toBeInTheDocument()
+    expect(screen.getByText("1 SELECCIONADO(S)")).toBeInTheDocument()
     fireEvent.click(screen.getByText(/Jane/i))
-    expect(screen.getByText(/0 seleccionada/i)).toBeInTheDocument()
+    expect(screen.getAllByText("0 SELECCIONADO(S)")).toHaveLength(2)
 
     const waterOptions = screen.getAllByText(/Agua/i)
     fireEvent.click(waterOptions[waterOptions.length - 1])
-    expect(screen.getByText(/1 seleccionado/i)).toBeInTheDocument()
+    expect(screen.getByText("1 SELECCIONADO(S)")).toBeInTheDocument()
     fireEvent.click(waterOptions[waterOptions.length - 1])
-    expect(screen.getByText(/0 seleccionado/i)).toBeInTheDocument()
+    expect(screen.getAllByText("0 SELECCIONADO(S)")).toHaveLength(2)
   })
 
   it("loads more transfers when the transfer list is paginated", () => {

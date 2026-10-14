@@ -33,12 +33,6 @@ export function BadgeLogin({ onLogin, isProcessing, loginStatus }: BadgeLoginPro
     }
   }, [loginStatus])
 
-  // On a granted login, reveal the password so the operator's entered
-  // credentials are fully readable on the card before it crosses the gate.
-  useEffect(() => {
-    if (loginStatus === "granted") setShowPassword(true)
-  }, [loginStatus])
-
   const handleClick = () => {
     if (!isHanging) setIsHanging(true)
   }

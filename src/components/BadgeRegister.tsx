@@ -125,7 +125,6 @@ export function BadgeRegister({ onRegister, isProcessing, registerStatus }: Badg
     <motion.div
       className={`absolute top-0 z-30 origin-top flex flex-col items-center ${!isHanging ? "cursor-pointer" : ""} w-[90vw] sm:w-[420px] max-w-[420px]`}
       style={{ left: "50%", perspective: "1200px", transformStyle: "preserve-3d" }}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       variants={badgeVariants as any}
       initial="initialDistortion"
       animate={currentVariant}

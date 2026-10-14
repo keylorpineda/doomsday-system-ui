@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom"
+﻿import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/pages/Admin/context/AuthContext"
 
@@ -10,10 +10,8 @@ interface WorkerGuardProps {
 function dashboardForRole(role: string | undefined): string | null {
   if (!role) return null
   const r = role.toLowerCase()
-  if (r === "worker") return null // handled by caller
   if (r.includes("admin")) return "/admin/dashboard"
   if (r === "camp_leader") return "/campleader/dashboard"
-  if (r === "camp_manager") return "/camp-manager"
   if (r === "resource_manager") return "/camp-manager"
   if (r === "travel_manager") return "/travel-manager/dashboard"
   return null
@@ -36,6 +34,6 @@ export default function WorkerGuard({ children }: WorkerGuardProps) {
   const redirect = dashboardForRole(role)
   if (redirect) return <Navigate to={redirect} replace />
 
-  // Unknown role — back to login
+  // Unknown role â€” back to login
   return <Navigate to="/login" replace />
 }

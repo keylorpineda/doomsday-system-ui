@@ -4,6 +4,16 @@ import { campsService, TacticalMapApiError } from "../services/campsService"
 
 import type { Camp, ExpeditionEvent, HazardArea, TransferLine } from "../types/camp"
 
+import api from "@/config/api"
+import { useAlertsStore } from "@/store/useAlertsStore"
+
+interface RawInventoryAlert {
+  resource_id: number
+  resource_name?: string
+  current_quantity: number
+  minimum_stock_required: number
+}
+
 interface CampContextType {
   camps: Camp[]
   transfers: TransferLine[]
@@ -27,18 +37,55 @@ export const CampProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const setInventoryAlerts = useAlertsStore((s) => s.setInventoryAlerts)
+
+  const applyAlertsToCamps = (
+    campList: Camp[],
+    alertsByCampId: Record<string, RawInventoryAlert[]>,
+  ): Camp[] =>
+    campList.map((camp) => {
+      const campAlerts = alertsByCampId[String(camp.id)] ?? []
+      return {
+        ...camp,
+        hasAlert: campAlerts.length > 0,
+        dangerLevel:
+          campAlerts.length >= 3 ? "critical" : campAlerts.length >= 1 ? "high" : camp.dangerLevel,
+      }
+    })
+
   const loadData = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const fetchedCamps = await campsService.getCamps()
-      const [fetchedTransfers, fetchedHazards] = await Promise.all([
-        campsService.getTransfers(fetchedCamps),
-        campsService.getHazardAreas(fetchedCamps),
+      // Tres requests en paralelo en lugar de 1 + N + N
+      const [fetchedCamps, alertsResponse] = await Promise.all([
+        campsService.getCamps(),
+        api
+          .get<Record<string, RawInventoryAlert[]>>("/resources/inventory/alerts/all")
+          .catch(() => ({ data: {} as Record<string, RawInventoryAlert[]> })),
       ])
 
-      setCamps(fetchedCamps)
+      const rawAlerts = alertsResponse.data ?? {}
+      const alertsByCampId: Record<string, RawInventoryAlert[]> = {}
+
+      for (const [campId, alerts] of Object.entries(rawAlerts)) {
+        const normalized = (Array.isArray(alerts) ? alerts : []).map((a) => ({
+          ...a,
+          resource_name: a.resource_name ?? `Recurso ${a.resource_id}`,
+        }))
+        alertsByCampId[campId] = normalized
+        setInventoryAlerts(campId, normalized)
+      }
+
+      const campsWithAlerts = applyAlertsToCamps(fetchedCamps, alertsByCampId)
+
+      const [fetchedTransfers, fetchedHazards] = await Promise.all([
+        campsService.getTransfers(campsWithAlerts),
+        campsService.getHazardAreas(campsWithAlerts),
+      ])
+
+      setCamps(campsWithAlerts)
       setTransfers(fetchedTransfers)
       setHazardAreas(fetchedHazards)
     } catch (err) {
@@ -56,21 +103,19 @@ export const CampProvider = ({ children }: { children: React.ReactNode }) => {
     void loadData()
   }, [])
 
+  // Sync camp alert state whenever the global store receives socket events
+  const inventoryAlerts = useAlertsStore((s) => s.inventoryAlerts)
+  useEffect(() => {
+    if (Object.keys(inventoryAlerts).length === 0) return
+    setCamps((currentCamps) => {
+      if (currentCamps.length === 0) return currentCamps
+      return applyAlertsToCamps(currentCamps, inventoryAlerts)
+    })
+  }, [inventoryAlerts])
+
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setCamps((currentCamps) => {
-        if (Math.random() <= 0.7 || currentCamps.length === 0) return currentCamps
-
-        const targetIndex = Math.floor(Math.random() * currentCamps.length)
-        const next = [...currentCamps]
-        const target = next[targetIndex]
-        next[targetIndex] = {
-          ...target,
-          hasAlert: Math.random() > 0.5,
-        }
-        return next
-      })
-
+      // Expedition simulation (visual only — no fake alerts)
       setExpeditions((currentExpeditions) => {
         if (Math.random() <= 0.65 || camps.length === 0) return currentExpeditions
 

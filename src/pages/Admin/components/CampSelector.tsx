@@ -16,11 +16,14 @@ export default function CampSelector() {
     try {
       await switchActiveCamp(nextId)
     } catch {
-      // Server rejected the switch — leave the selector as-is so the user can retry.
+      // intentional
+    } finally {
       setIsSwitching(false)
     }
   }
 
+  // El campamento 3D es el fondo permanente del panel admin: siempre está
+  // visible, así que ya no hay botón "Ver Campamento" (sería redundante).
   return (
     <div className="camp-selector-wrapper">
       <span className="camp-selector-label">UBICACIÓN:</span>

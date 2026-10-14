@@ -1,30 +1,21 @@
 import { useQuery } from "@tanstack/react-query"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  Package,
-  Droplets,
-  Utensils,
-  HeartPulse,
-  Hammer,
-  Filter,
   AlertTriangle,
   Search,
-  CheckCircle2,
   XCircle,
-  Database,
-  Crosshair,
-  Flame,
-  Bed,
-  Archive,
   Navigation,
   ClipboardList,
   AlertCircle,
+  Users,
 } from "lucide-react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { getCamps } from "@/features/camps/services/camps.service"
 import { getInventory } from "@/features/inventory/services/inventory.service"
-import { useAuth } from "@/pages/Admin/context/AuthContext"
+import { getPersons } from "@/features/persons/services/persons.service"
+import { useAuthStore } from "@/store/useAuthStore"
 
 export interface Resource {
   id: string
@@ -41,13 +32,49 @@ export interface Resource {
 
 type ResourceStatus = Resource["status"] | "all"
 
+const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
+  water: { label: "Agua", icon: "💧" },
+  agua: { label: "Agua", icon: "💧" },
+  food: { label: "Comida", icon: "🌽" },
+  comida: { label: "Comida", icon: "🌽" },
+  medicine: { label: "Medicina", icon: "💊" },
+  medical: { label: "Medicina", icon: "💊" },
+  medicina: { label: "Medicina", icon: "💊" },
+  tools: { label: "Herramientas", icon: "🔧" },
+  herramientas: { label: "Herramientas", icon: "🔧" },
+  weaponry: { label: "Armamento", icon: "⚔️" },
+  weapons: { label: "Armamento", icon: "⚔️" },
+  armas: { label: "Armamento", icon: "⚔️" },
+  armamento: { label: "Armamento", icon: "⚔️" },
+  fuel: { label: "Combustible", icon: "⛽" },
+  combustible: { label: "Combustible", icon: "⛽" },
+  rest: { label: "Descanso", icon: "🛏️" },
+  descanso: { label: "Descanso", icon: "🛏️" },
+  clothing: { label: "Vestimenta", icon: "👕" },
+  ropa: { label: "Vestimenta", icon: "👕" },
+  vestimenta: { label: "Vestimenta", icon: "👕" },
+}
+
+function getCategoryInfo(rawCategory: string | undefined | null) {
+  const clean = String(rawCategory ?? "")
+    .toLowerCase()
+    .trim()
+  return CATEGORY_MAP[clean] || { label: rawCategory || "Otros", icon: "📦" }
+}
+
 export default function TravelResources() {
-  const { user } = useAuth()
+  const { user } = useAuthStore()
   const baseCampId = user?.camp_id ?? ""
   const [activeStatus, setActiveStatus] = useState<ResourceStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(50)
+
+  useEffect(() => {
+    setVisibleCount(50)
+  }, [activeStatus, categoryFilter, searchQuery])
+  const navigate = useNavigate()
 
   // Consultas asíncronas reales
   const { data: campsData = [], isError: campsError } = useQuery({
@@ -58,6 +85,12 @@ export default function TravelResources() {
   const { data: inventoryData = [], isError: inventoryError } = useQuery({
     queryKey: ["inventory", baseCampId],
     queryFn: () => getInventory(baseCampId),
+    enabled: !!baseCampId,
+  })
+
+  const { data: personsResponse } = useQuery({
+    queryKey: ["persons", baseCampId],
+    queryFn: () => getPersons({ campId: baseCampId, limit: 1000 }),
     enabled: !!baseCampId,
   })
 
@@ -105,7 +138,10 @@ export default function TravelResources() {
     return resources.filter((r) => {
       if (r.campId !== baseCampId) return false
       if (activeStatus !== "all" && r.status !== activeStatus) return false
-      if (categoryFilter !== "all" && r.category !== categoryFilter) return false
+
+      const normCatLabel = getCategoryInfo(r.category).label
+      if (categoryFilter !== "all" && normCatLabel !== categoryFilter) return false
+
       if (searchQuery) {
         return r.name.toLowerCase().includes(searchQuery.toLowerCase())
       }
@@ -148,28 +184,13 @@ export default function TravelResources() {
     ]
   }, [resources, baseCampId])
 
-  const categories = ["all", ...Array.from(new Set(resources.map((r) => r.category)))]
-
-  const getIcon = (category: string) => {
-    switch (category?.toLowerCase()) {
-      case "water":
-        return Droplets
-      case "food":
-        return Utensils
-      case "medicine":
-        return HeartPulse
-      case "tools":
-        return Hammer
-      case "weaponry":
-        return Crosshair
-      case "fuel":
-        return Flame
-      case "rest":
-        return Bed
-      default:
-        return Package
-    }
-  }
+  const categories = useMemo(() => {
+    const uniqueLabels = new Set<string>()
+    resources.forEach((r) => {
+      uniqueLabels.add(getCategoryInfo(r.category).label)
+    })
+    return ["all", ...Array.from(uniqueLabels)]
+  }, [resources])
 
   const getStatusLabel = (status: Resource["status"]) => {
     switch (status) {
@@ -218,59 +239,197 @@ export default function TravelResources() {
     }
   }
 
-  // Evaluation for prep panel — memoized to avoid recomputing on unrelated re-renders
-  const criticalShortages = useMemo(
-    () => filteredResources.filter((r) => r.status === "critical" || r.status === "insufficient"),
-    [filteredResources],
+  const campResources = useMemo(
+    () => resources.filter((r) => r.campId === baseCampId),
+    [resources, baseCampId],
   )
-  const isTripReady = criticalShortages.length === 0 && filteredResources.length > 0
+  const okCount = useMemo(
+    () => campResources.filter((r) => r.status === "sufficient").length,
+    [campResources],
+  )
+  const warningCount = useMemo(
+    () => campResources.filter((r) => r.status === "low").length,
+    [campResources],
+  )
+  const insufficientCount = useMemo(
+    () => campResources.filter((r) => r.status === "insufficient").length,
+    [campResources],
+  )
+  const criticalCount = useMemo(
+    () => campResources.filter((r) => r.status === "critical" || r.status === "none").length,
+    [campResources],
+  )
+  const totalCount = campResources.length
+
+  const waterItems = useMemo(
+    () => campResources.filter((r) => getCategoryInfo(r.category).label === "Agua"),
+    [campResources],
+  )
+  const waterStatus = useMemo(() => {
+    return waterItems.some(
+      (r) => r.status === "critical" || r.status === "none" || r.status === "insufficient",
+    )
+      ? "CRÍTICA"
+      : waterItems.some((r) => r.status === "low")
+        ? "LIMITADA"
+        : waterItems.length > 0
+          ? "ÓPTIMA"
+          : "SIN STOCK"
+  }, [waterItems])
+
+  const foodItems = useMemo(
+    () => campResources.filter((r) => getCategoryInfo(r.category).label === "Comida"),
+    [campResources],
+  )
+  const foodStatus = useMemo(() => {
+    return foodItems.some(
+      (r) => r.status === "critical" || r.status === "none" || r.status === "insufficient",
+    )
+      ? "CRÍTICA"
+      : foodItems.some((r) => r.status === "low")
+        ? "LIMITADA"
+        : foodItems.length > 0
+          ? "ÓPTIMA"
+          : "SIN STOCK"
+  }, [foodItems])
+
+  const medicineItems = useMemo(
+    () => campResources.filter((r) => getCategoryInfo(r.category).label === "Medicina"),
+    [campResources],
+  )
+  const medicineStatus = useMemo(() => {
+    return medicineItems.some(
+      (r) => r.status === "critical" || r.status === "none" || r.status === "insufficient",
+    )
+      ? "CRÍTICA"
+      : medicineItems.some((r) => r.status === "low")
+        ? "LIMITADA"
+        : medicineItems.length > 0
+          ? "ÓPTIMA"
+          : "SIN STOCK"
+  }, [medicineItems])
+
+  const criticalShortages = useMemo(
+    () =>
+      campResources.filter(
+        (r) => r.status === "critical" || r.status === "insufficient" || r.status === "none",
+      ),
+    [campResources],
+  )
+  const isTripReady = useMemo(
+    () => criticalShortages.length === 0 && campResources.length > 0,
+    [criticalShortages, campResources],
+  )
+
+  const persons = useMemo(() => {
+    return (personsResponse?.data ?? []).filter((p) => {
+      const pCampId = p.camp_id ?? p.userAccount?.camp_id
+      return String(pCampId) === String(baseCampId)
+    })
+  }, [personsResponse, baseCampId])
+
+  const exploringCount = useMemo(() => {
+    return persons.filter((p) => {
+      const st = String(p.status ?? "").toLowerCase()
+      return st === "exploring" || st === "explorando" || st === "traveling" || st === "viajando"
+    }).length
+  }, [persons])
+
+  const sickCount = useMemo(() => {
+    return persons.filter((p) => {
+      const st = String(p.status ?? "").toLowerCase()
+      return st === "sick" || st === "injured" || st === "enfermo" || st === "herido"
+    }).length
+  }, [persons])
+
+  const availableExplorersCount = useMemo(() => {
+    return persons.filter((p) => {
+      const st = String(p.status ?? "").toLowerCase()
+      const isAvailableStatus =
+        st === "active" ||
+        st === "activo" ||
+        st === "idle" ||
+        st === "inactivo" ||
+        st === "resting" ||
+        st === "available" ||
+        !p.status
+      return isAvailableStatus && p.profession?.can_explore === true
+    }).length
+  }, [persons])
+
+  const totalCampPersonnel = useMemo(() => {
+    return persons.filter((p) => {
+      const st = String(p.status ?? "").toLowerCase()
+      return st !== "deceased" && st !== "fallecido"
+    }).length
+  }, [persons])
+
+  const viabilityScore = useMemo(() => {
+    if (campResources.length === 0) return 0
+    let score = 100
+
+    // Penalización por recursos críticos/insuficientes
+    score -= criticalCount * 20
+    score -= insufficientCount * 10
+    score -= warningCount * 5
+
+    // Penalización por falta de exploradores disponibles
+    if (availableExplorersCount === 0 && exploringCount === 0) {
+      score -= 45
+    } else if (availableExplorersCount === 0) {
+      score -= 25
+    }
+
+    // Penalización por enfermos
+    if (totalCampPersonnel > 0) {
+      const sickRate = sickCount / totalCampPersonnel
+      score -= Math.round(sickRate * 60)
+    }
+
+    return Math.max(0, Math.min(100, score))
+  }, [
+    campResources,
+    criticalCount,
+    insufficientCount,
+    warningCount,
+    availableExplorersCount,
+    exploringCount,
+    sickCount,
+    totalCampPersonnel,
+  ])
 
   return (
-    <div className="h-full flex flex-col gap-3 overflow-hidden bg-[#0a0a0a] p-4">
+    <div className="tm-container">
       {/* 1. Header de la vista */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#12110f] p-4 rounded-lg border border-[#d4a373]/20 border-t-2 border-t-[#d4a373]/60 shrink-0 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#d4a373]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="bg-[#d4a373]/10 p-2 border border-[#d4a373]/30 rounded">
-            <Archive className="h-6 w-6 text-[#d4a373]" />
-          </div>
+      <div className="tm-board-header">
+        <div className="tm-board-left">
+          <div className="tm-online-dot" />
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-1.5 py-0.5 bg-bg-paper paper-texture text-ink text-sm font-mono font-black uppercase rotate-1 shadow-sm border border-bg-paper-shadow/30">
-                Logística_Refugio
-              </span>
-              <span className="text-sm font-mono text-[#d4a373]/40 uppercase tracking-widest font-black">
-                INV_OPERATIONAL
-              </span>
-            </div>
-            <h2 className="text-lg font-typewriter font-bold text-white uppercase tracking-tight leading-none">
-              RECURSOS DE VIAJE
-            </h2>
-            <p className="font-mono text-xs text-[#d4a373]/80 uppercase tracking-widest mt-1">
-              Inventario operativo: {baseCamp?.name.toUpperCase()}
+            <h2 className="tm-board-title leading-none">Recursos de Viaje</h2>
+            <p className="tm-board-sub mt-1">
+              Base: {baseCamp?.name.toUpperCase() ?? baseCampId.toUpperCase()}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mt-4 md:mt-0 relative z-10">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="flex flex-wrap items-center gap-4 shrink-0">
+          <div className="tm-folder-tabs">
+            <button
+              onClick={() => setActiveStatus("all")}
+              className={`tm-tab ${activeStatus === "all" ? "tm-tab-active" : ""}`}
+            >
+              TODOS ({totalCount})
+            </button>
             {stats.map((s) => (
               <button
+                type="button"
                 key={s.id}
-                onClick={() => setActiveStatus(s.id as ResourceStatus)}
-                aria-pressed={activeStatus === s.id}
-                className={`flex flex-col items-center transition-all duration-150 px-3 py-2 rounded border ${
-                  activeStatus === s.id
-                    ? "bg-[#d4a373]/10 border-[#d4a373]/30"
-                    : "border-transparent hover:bg-[#d4a373]/10 hover:border-[#d4a373]/15"
-                }`}
+                onClick={() =>
+                  setActiveStatus(activeStatus === s.id ? "all" : (s.id as ResourceStatus))
+                }
+                className={`tm-tab ${activeStatus === s.id ? "tm-tab-active" : ""}`}
               >
-                <span className={`text-base font-mono font-bold tabular-nums ${s.color}`}>
-                  {s.count}
-                </span>
-                <span className="text-[10px] font-mono text-white/40 uppercase tracking-wide mt-0.5">
-                  {s.label}
-                </span>
+                {s.label.toUpperCase()} ({s.count})
               </button>
             ))}
           </div>
@@ -278,7 +437,7 @@ export default function TravelResources() {
       </div>
 
       {hasError && (
-        <div className="bg-red-950/40 border border-red-500/50 p-3 font-mono text-sm text-red-400 uppercase flex items-center gap-2 shadow-lg mb-2">
+        <div className="tm-alert">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>
             Error de conexión con la central. Modo fuera de línea activo. No se pudieron cargar los
@@ -287,36 +446,120 @@ export default function TravelResources() {
         </div>
       )}
 
-      {/* 2. Barra de filtros compacta */}
-      <div className="bg-[#12110f] p-2 px-4 rounded-lg flex items-center gap-4 shrink-0 border border-white/5">
-        <div className="flex-1 flex items-center gap-3 bg-black/40 px-3 py-2 rounded border border-white/10 focus-within:border-[#d4a373]/40 transition-all">
-          <Search className="h-3.5 w-3.5 text-white/20 shrink-0" />
+      {/* ── CRITICAL ALERT BANNER ───────────────────────────────── */}
+      <AnimatePresence>
+        {criticalCount + insufficientCount > 0 && (
+          <motion.div
+            className="flex items-center gap-2 text-[#9c2720] text-xs font-mono uppercase bg-[#9c2720]/15 border border-[#9c2720]/30 p-3.5 rounded-sm shrink-0"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              ⚠ ALERTA — {criticalCount + insufficientCount} RECURSO(S) EN ESTADO CRÍTICO O
+              INSUFICIENTE REQUIEREN ATENCIÓN INMEDIATA
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── STAT CARDS ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+        <motion.div
+          className="bg-[#1c1208] border-2 border-black shadow-[3px_3px_0px_#000] p-4 flex flex-col gap-1 relative overflow-hidden"
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.05, type: "spring", stiffness: 160 }}
+        >
+          <div className="text-3xl font-mono font-bold leading-none text-[#4c6351]">{okCount}</div>
+          <div className="text-[10px] font-mono font-black text-white/40 tracking-wider uppercase">
+            SUFICIENTES
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl opacity-10 font-mono text-[#4c6351]">
+            ✓
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="bg-[#1c1208] border-2 border-black shadow-[3px_3px_0px_#000] p-4 flex flex-col gap-1 relative overflow-hidden"
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 160 }}
+        >
+          <div className="text-3xl font-mono font-bold leading-none text-[#c27c2f]">
+            {warningCount}
+          </div>
+          <div className="text-[10px] font-mono font-black text-white/40 tracking-wider uppercase">
+            BAJOS
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl opacity-10 font-mono text-[#c27c2f]">
+            ⚠
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="bg-[#1c1208] border-2 border-black shadow-[3px_3px_0px_#000] p-4 flex flex-col gap-1 relative overflow-hidden"
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.15, type: "spring", stiffness: 160 }}
+        >
+          <motion.div
+            className="text-3xl font-mono font-bold leading-none text-[#9c2720]"
+            animate={criticalCount + insufficientCount > 0 ? { opacity: [1, 0.4, 1] } : {}}
+            transition={
+              criticalCount + insufficientCount > 0 ? { duration: 1.2, repeat: Infinity } : {}
+            }
+          >
+            {criticalCount + insufficientCount}
+          </motion.div>
+          <div className="text-[10px] font-mono font-black text-white/40 tracking-wider uppercase">
+            CRÍTICOS / INSUF.
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl opacity-10 font-mono text-[#9c2720]">
+            ☠
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="bg-[#1c1208] border-2 border-black shadow-[3px_3px_0px_#000] p-4 flex flex-col gap-1 relative overflow-hidden"
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 160 }}
+        >
+          <div className="text-3xl font-mono font-bold leading-none text-[#df8120]">
+            {totalCount}
+          </div>
+          <div className="text-[10px] font-mono font-black text-white/40 tracking-wider uppercase">
+            TOTAL ÍTEMS
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl opacity-10 font-mono text-[#df8120]">
+            📦
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 2. Filtros */}
+      <div className="flex flex-wrap gap-3 shrink-0 items-center bg-[#1c1208] p-3 border-2 border-black shadow-[2px_2px_0px_#000]">
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
           <input
             type="text"
             placeholder="Buscar recurso..."
+            className="vintage-input w-full pl-9 text-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none focus:outline-none text-xs font-mono text-white/70 w-full placeholder:text-white/20"
           />
         </div>
-
-        <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-white/40 px-4 border-l border-white/10">
-          <span className="text-[#d4a373]/50">Base:</span>
-          <span className="text-[#d4a373] font-semibold">
-            {baseCamp?.name?.toUpperCase() ?? baseCampId}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 pl-4 border-l border-white/10">
-          <Filter className="h-3 w-3 text-white/20 shrink-0" />
+        <div className="flex items-center gap-2 bg-[#121110] border border-[#d4a373]/20 px-4 py-2 rounded-md">
+          <span className="text-xs font-mono text-white/30 uppercase font-black">Categoría:</span>
           <select
+            className="bg-transparent text-xs font-mono text-[#c27c2f] font-black focus:outline-none uppercase cursor-pointer"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            aria-label="Filtrar por categoría"
-            className="bg-transparent border-none text-[10px] font-mono text-white/40 uppercase focus:outline-none cursor-pointer hover:text-[#fca311] transition-all"
           >
             {categories.map((c) => (
-              <option key={c} value={c} className="bg-[#12110f]">
+              <option key={c} value={c} className="bg-[#121110] text-[#c27c2f]">
                 {c === "all" ? "TODAS" : c.toUpperCase()}
               </option>
             ))}
@@ -324,466 +567,509 @@ export default function TravelResources() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden">
-        {/* PANEL IZQUIERDO: INVENTARIO DE VIAJE */}
-        <div
-          className="md:w-72 w-full flex flex-col gap-2 md:shrink-0 overflow-hidden bg-[#12110f] p-3 rounded-lg border border-[#d4a373]/15 shadow-2xl relative"
-          style={{ maxHeight: selectedId ? undefined : undefined }}
-        >
-          <div className="absolute top-0 right-0 w-16 h-16 bg-[#d4a373]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
-
-          <div className="flex flex-col px-1 mb-1 border-b border-[#d4a373]/10 pb-2 relative z-10">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-semibold text-[#d4a373] uppercase tracking-widest">
-                Inventario de Viaje
-              </span>
-              <span className="text-[10px] font-mono text-white/30 uppercase bg-white/5 px-1.5 py-0.5 rounded tabular-nums">
-                {filteredResources.length}
+      {/* 3. Layout de columnas */}
+      <div className="flex-1 flex gap-4 overflow-hidden">
+        {/* LEFT: Inventario en hoja crema de ancho completo */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="tm-paper tm-paper-texture flex-1 flex flex-col overflow-hidden p-6 relative">
+            <div className="tm-section-row flex-shrink-0">
+              <h3 className="tm-section-title font-typewriter font-black text-sm text-ink flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-ink-soft" />
+                MANIFIESTO DE INVENTARIO CENTRAL
+              </h3>
+              <span className="tm-section-count font-mono font-black text-ink-soft">
+                {filteredResources.length} ÍTEM(S) REGISTRADOS
               </span>
             </div>
-          </div>
 
-          <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2 relative z-10">
-            {filteredResources.length > 0 ? (
-              filteredResources.map((resource) => {
-                const Icon = getIcon(resource.category)
-                return (
-                  <motion.button
-                    key={resource.id}
-                    whileHover={{ x: 2 }}
-                    onClick={() => setSelectedId(resource.id)}
-                    className={`w-full text-left p-3 relative transition-all border border-[#d4a373]/10 rounded group shadow-md ${
-                      selectedId === resource.id
-                        ? "bg-bg-paper paper-texture scale-[1.02] z-10"
-                        : "bg-[#b69e7e]/5 hover:bg-[#b69e7e]/10 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`p-2 border ${selectedId === resource.id ? "bg-ink/5 border-ink/10" : "bg-black/20 border-white/5"}`}
-                      >
-                        <Icon
-                          className={`h-4 w-4 ${selectedId === resource.id ? "text-ink/60" : "text-[#d4a373]/40"}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h5
-                          className={`text-xs font-typewriter font-bold uppercase truncate ${
-                            selectedId === resource.id ? "text-ink" : "text-[#d4a373]"
-                          }`}
-                        >
-                          {resource.name}
-                        </h5>
-                        <div className="flex justify-between items-center mt-1">
-                          <span
-                            className={`text-[10px] font-mono uppercase tracking-wide ${selectedId === resource.id ? "text-ink/40" : "text-[#d4a373]/40"}`}
-                          >
-                            {resource.category}
-                          </span>
-                          <span
-                            className={`text-xs font-mono font-semibold tabular-nums ${selectedId === resource.id ? "text-ink" : "text-white/60"}`}
-                          >
-                            {resource.quantity} {resource.unit.toUpperCase()}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="flex-1 h-1 bg-black/20 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{
-                                width: `${Math.min((resource.quantity / (resource.minThreshold || 100)) * 100, 100)}%`,
-                              }}
-                              className={`h-full ${getLevelColor(resource.status)} opacity-80`}
-                            />
-                          </div>
-                          <span
-                            className={`text-[10px] font-mono font-semibold uppercase ${getStatusColor(resource.status)}`}
-                          >
-                            {getStatusLabel(resource.status)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedId === resource.id && (
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#d4a373]" />
-                    )}
-                  </motion.button>
-                )
-              })
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Archive className="h-10 w-10 text-[#d4a373]/10 mb-4" />
-                <p className="text-sm font-mono text-white/20 uppercase font-black">
-                  Sin recursos registrados
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* PANEL CENTRAL: FICHA DEL RECURSO SELECCIONADO */}
-        <div
-          className={`flex-1 flex flex-col bg-[#12110f] rounded-lg overflow-hidden border border-white/5 shadow-2xl relative ${!selectedId ? "hidden md:flex" : "flex"}`}
-        >
-          <AnimatePresence mode="wait">
-            {selectedResource ? (
-              <motion.div
-                key={selectedResource.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                {/* Header Manifest */}
-                <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/20 shrink-0">
-                  <button
-                    onClick={() => setSelectedId(null)}
-                    className="md:hidden text-[#d4a373]/60 hover:text-[#d4a373] font-mono text-xs uppercase tracking-wide flex items-center gap-1 mr-3 transition-colors"
-                    aria-label="Volver a la lista"
-                  >
-                    ← Volver
-                  </button>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-[#b69e7e]/10 p-2 rounded border border-[#b69e7e]/20">
-                      <ClipboardList className="h-5 w-5 text-[#d4a373]" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-typewriter font-bold text-white uppercase tracking-wider">
-                        Detalle del Recurso
-                      </h3>
-                      <p className="text-[10px] font-mono text-[#d4a373]/50 uppercase tracking-wide">
-                        Ficha #{selectedResource.id}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content - Old Paper Manifest */}
-                <div className="flex-1 p-6 flex flex-col overflow-hidden bg-[#0c0c0c] items-center justify-center">
-                  <div className="w-full h-full max-w-2xl bg-bg-paper paper-texture shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden p-12 border-[8px] border-[#8b7355]/10 flex flex-col">
-                    <div className="absolute top-10 right-10 flex flex-col items-center rotate-6 select-none opacity-40">
-                      <div className="border-4 border-ink p-1 mb-1">
-                        <span className="text-lg font-black font-mono px-2">REGISTRADO</span>
-                      </div>
-                      <span className="text-sm font-mono font-black italic">
-                        Refugio Alfa - Logística
-                      </span>
-                    </div>
-
-                    <div className="flex-1 flex flex-col relative z-10">
-                      <div className="mb-8 pb-5 border-b-4 border-double border-ink/20">
-                        <h2
-                          className="text-3xl font-typewriter font-bold text-ink uppercase leading-none"
-                          style={{ textWrap: "balance" }}
-                        >
-                          {selectedResource.name}
-                        </h2>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-8">
-                        <div className="space-y-4">
-                          <div>
-                            <span className="text-xs font-mono text-ink/40 uppercase tracking-wider">
-                              Clasificación
-                            </span>
-                            <p className="text-sm font-typewriter font-bold text-ink uppercase mt-1">
-                              {selectedResource.category}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-mono text-ink/40 uppercase tracking-wider">
-                              Unidad de Medida
-                            </span>
-                            <p className="text-sm font-mono font-semibold text-ink uppercase mt-1">
-                              {selectedResource.unit}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-mono text-ink/40 uppercase tracking-wider">
-                              Asignado a
-                            </span>
-                            <p className="text-sm font-mono font-semibold text-ink uppercase mt-1">
-                              {getCampName(selectedResource.campId)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="bg-ink/5 p-6 rounded-sm border border-ink/10 flex flex-col items-center justify-center relative overflow-hidden">
-                          <div className="absolute top-0 left-0 w-full h-1 bg-ink/10" />
-                          <span className="text-xs font-mono text-ink/40 uppercase tracking-wider mb-4">
-                            Stock Vital
-                          </span>
-                          <div className="text-5xl font-typewriter font-bold text-ink leading-none mb-1 tabular-nums">
-                            {selectedResource.quantity}
-                          </div>
-                          <span className="text-xs font-mono text-ink/60 uppercase tracking-widest">
-                            {selectedResource.unit}
-                          </span>
-                          <div
-                            className={`mt-4 px-3 py-1.5 border font-mono font-semibold text-xs uppercase rotate-[-2deg] ${getStatusColor(selectedResource.status).replace("text-", "border-")}`}
-                          >
-                            {getStatusLabel(selectedResource.status)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-12 space-y-6">
-                        <div>
-                          <h4 className="text-xs font-mono font-black text-ink/40 border-b border-ink/5 pb-1 mb-3 uppercase">
-                            ESTADO DE DISPONIBILIDAD
-                          </h4>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-end text-sm font-mono mb-1">
-                              <span className="text-ink/60">UMBRAL CRÍTICO MÍNIMO</span>
-                              <span className="font-black text-ink">
-                                {selectedResource.minThreshold || 0}{" "}
-                                {selectedResource.unit.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="h-6 w-full bg-ink/5 border border-ink/20 relative group overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{
-                                  width: `${Math.min((selectedResource.quantity / (selectedResource.minThreshold || 1)) * 50, 100)}%`,
-                                }}
-                                className={`h-full ${getLevelColor(selectedResource.status).replace("bg-", "bg-")} opacity-60 shadow-inner`}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center mix-blend-difference">
-                                <span className="text-sm font-mono font-black text-white/40 uppercase tracking-widest">
-                                  NIVEL_RECURSO_ACTUAL
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-xs font-mono font-black text-ink/40 border-b border-ink/5 pb-1 mb-2 uppercase">
-                            RECOMENDACIÓN DE USO
-                          </h4>
-                          <div className="p-4 bg-white/40 border border-ink/10 rounded-sm italic font-typewriter text-sm text-ink/80 leading-relaxed min-h-[60px]">
-                            {selectedResource.usageNotes ||
-                              "Sin instrucciones adicionales de uso operativo."}
-                          </div>
-                          <p className="mt-2 text-sm font-mono text-ink/40 leading-tight">
-                            {selectedResource.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-auto pt-6 flex justify-between items-center text-[10px] font-mono text-ink/30 uppercase">
-                        <span>Actualizado: {new Date().toLocaleDateString("es-CR")}</span>
-                        <span className="text-ink/50">Ref. {selectedResource.id}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                <Database className="h-16 w-16 mb-6 text-[#d4a373] opacity-20" />
-                <h3 className="text-base font-typewriter font-bold text-white/40 uppercase mb-2">
-                  Selecciona un recurso
-                </h3>
-                <p className="text-xs font-mono text-white/25 max-w-xs leading-relaxed">
-                  Elige un item de la lista para ver su ficha completa con stock, umbral y estado.
-                </p>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* PANEL DERECHO: PREPARACIÓN DE VIAJE */}
-        <div className="hidden lg:flex w-64 flex-col gap-3 shrink-0 overflow-hidden">
-          <div className="bg-[#12110f] p-4 rounded-lg flex flex-col h-full border border-white/5 shadow-2xl overflow-hidden relative">
-            <h3 className="text-xs font-mono font-semibold text-[#d4a373] uppercase tracking-widest mb-4 flex items-center gap-2 shrink-0 border-b border-[#d4a373]/10 pb-3">
-              <Navigation className="h-3.5 w-3.5" /> Preparación de Viaje
-            </h3>
-
-            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-5">
-              <div className="space-y-4">
-                <motion.div
-                  animate={isTripReady ? { scale: [1, 1.02, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  className={`p-4 rounded-sm border border-dashed relative flex flex-col items-center text-center ${
-                    isTripReady
-                      ? "bg-accent-approved/10 border-accent-approved/30 shadow-[0_0_20px_rgba(76,99,81,0.2)]"
-                      : "bg-red-900/10 border-red-900/20"
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-white/30 font-semibold uppercase block mb-2 tracking-wider">
-                    Estado de Preparación
-                  </span>
-                  {isTripReady ? (
+            {/* Table layout of stocks */}
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+              <table className="w-full border-collapse font-mono text-xs">
+                <thead>
+                  <tr className="border-b border-ink/20">
+                    <th className="text-left font-typewriter font-bold text-ink-soft py-3 px-2 uppercase tracking-wider">
+                      REF ID
+                    </th>
+                    <th className="text-left font-typewriter font-bold text-ink-soft py-3 px-2 uppercase tracking-wider">
+                      DESCRIPCIÓN
+                    </th>
+                    <th className="text-left font-typewriter font-bold text-ink-soft py-3 px-2 uppercase tracking-wider">
+                      STOCK ACTUAL / MÍN
+                    </th>
+                    <th className="text-left font-typewriter font-bold text-ink-soft py-3 px-2 uppercase tracking-wider">
+                      ESTADO
+                    </th>
+                    <th className="text-right font-typewriter font-bold text-ink-soft py-3 px-2 uppercase tracking-wider">
+                      DETALLE
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredResources.length > 0 ? (
                     <>
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                      >
-                        <CheckCircle2 className="h-8 w-8 text-accent-approved mb-2" />
-                      </motion.div>
-                      <span className="text-sm font-typewriter font-bold uppercase text-accent-approved">
-                        LISTO PARA VIAJE
-                      </span>
+                      {filteredResources.slice(0, visibleCount).map((resource) => {
+                        const statusLabel = getStatusLabel(resource.status).toUpperCase()
+                        const statusColorClass = getStatusColor(resource.status)
+                        const levelColorClass = getLevelColor(resource.status)
+                        const max = Math.max(
+                          (resource.minThreshold || 100) * 2,
+                          resource.quantity,
+                          1,
+                        )
+                        const pct = Math.min((resource.quantity / max) * 100, 100)
+                        const minPct = ((resource.minThreshold || 0) / max) * 100
+
+                        return (
+                          <motion.tr
+                            key={resource.id}
+                            whileHover={{ backgroundColor: "rgba(26, 15, 5, 0.04)" }}
+                            onClick={() => setSelectedId(resource.id)}
+                            className="border-b border-dashed border-ink/10 cursor-pointer hover:bg-ink/5 transition-colors"
+                          >
+                            {/* REF ID */}
+                            <td className="py-3.5 px-2 font-mono font-bold text-ink/70">
+                              REF-{resource.id.slice(0, 4).toUpperCase()}
+                            </td>
+
+                            {/* DESCRIPCIÓN */}
+                            <td className="py-3.5 px-2">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-lg flex-shrink-0">
+                                  {getCategoryInfo(resource.category).icon}
+                                </span>
+                                <div>
+                                  <div className="font-mono font-bold text-ink text-sm uppercase leading-tight">
+                                    {resource.name}
+                                  </div>
+                                  <div className="text-[10px] font-mono text-ink-soft/60 uppercase leading-none mt-1">
+                                    {getCategoryInfo(resource.category).label.toUpperCase()}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* STOCK */}
+                            <td className="py-3.5 px-2" style={{ minWidth: "180px" }}>
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-baseline gap-1 font-mono font-bold text-ink">
+                                  <span className={`text-sm ${statusColorClass}`}>
+                                    {resource.quantity}
+                                  </span>
+                                  <span className="text-[10px] text-ink-soft/70 uppercase font-normal">
+                                    {resource.unit.toUpperCase()}
+                                  </span>
+                                  <span className="text-[9px] text-ink-soft/40 uppercase ml-2 font-normal">
+                                    / mín {resource.minThreshold || 0}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-ink/5 border border-ink/10 relative rounded-sm overflow-hidden">
+                                  <div
+                                    className="absolute top-0 bottom-0 z-10"
+                                    style={{
+                                      left: `${minPct}%`,
+                                      width: "2px",
+                                      backgroundColor: "rgba(26, 15, 5, 0.25)",
+                                    }}
+                                    title="Stock Mínimo"
+                                  />
+                                  <motion.div
+                                    className={`h-full ${levelColorClass} opacity-80`}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${pct}%` }}
+                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* ESTADO */}
+                            <td className="py-3.5 px-2">
+                              <span
+                                className={`tm-op-chip ${
+                                  resource.status === "sufficient"
+                                    ? "tm-chip-active"
+                                    : resource.status === "low"
+                                      ? "tm-chip-transit"
+                                      : "tm-chip-pending"
+                                } text-[9px] px-2 py-0.5 font-bold uppercase`}
+                              >
+                                {statusLabel}
+                              </span>
+                            </td>
+
+                            {/* ACCIONES */}
+                            <td className="py-3.5 px-2 text-right">
+                              <button
+                                type="button"
+                                className="tm-op-btn text-[10px]"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedId(resource.id)
+                                }}
+                              >
+                                Ver Ficha
+                              </button>
+                            </td>
+                          </motion.tr>
+                        )
+                      })}
+                      {visibleCount < filteredResources.length && (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setVisibleCount((v) => v + 50)}
+                              className="tm-op-btn text-[10px] px-6 py-2"
+                            >
+                              CARGAR MÁS RECURSOS ({filteredResources.length - visibleCount}{" "}
+                              RESTANTES)
+                            </button>
+                          </td>
+                        </tr>
+                      )}
                     </>
                   ) : (
-                    <>
-                      <XCircle className="h-8 w-8 text-accent-critical mb-2" />
-                      <span className="text-sm font-typewriter font-bold uppercase text-accent-critical">
-                        REQUIERE REVISIÓN
-                      </span>
-                    </>
-                  )}
-                </motion.div>
-
-                <div className="bg-black/20 border border-white/5 p-3 rounded-sm space-y-2">
-                  <h4 className="text-[10px] font-mono font-semibold text-white/40 uppercase tracking-widest mb-1">
-                    SITUACIÓN DE INSUMOS
-                  </h4>
-                  {[
-                    {
-                      label: "Agua",
-                      status:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "water" &&
-                            r.status !== "sufficient" &&
-                            r.status !== "low",
-                        ).length === 0
-                          ? "ÓPTIMA"
-                          : "BAJA",
-                      color:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "water" &&
-                            r.status !== "sufficient" &&
-                            r.status !== "low",
-                        ).length === 0
-                          ? "text-accent-approved"
-                          : "text-accent-critical",
-                    },
-                    {
-                      label: "Víveres",
-                      status:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "food" &&
-                            (r.status === "critical" || r.status === "insufficient"),
-                        ).length === 0
-                          ? "SUFICIENTE"
-                          : "LIMITADA",
-                      color:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "food" &&
-                            (r.status === "critical" || r.status === "insufficient"),
-                        ).length === 0
-                          ? "text-accent-approved"
-                          : "text-[#c27c2f]",
-                    },
-                    {
-                      label: "Medicina",
-                      status:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "medicine" &&
-                            (r.status === "critical" || r.status === "insufficient"),
-                        ).length === 0
-                          ? "SUFICIENTE"
-                          : "CRÍTICA",
-                      color:
-                        resources.filter(
-                          (r) =>
-                            r.campId === baseCampId &&
-                            r.category === "medicine" &&
-                            (r.status === "critical" || r.status === "insufficient"),
-                        ).length === 0
-                          ? "text-accent-approved"
-                          : "text-accent-critical",
-                    },
-                  ].map((item) => (
-                    <div key={item.label} className="flex justify-between items-center">
-                      <span className="text-xs font-mono text-white/50 uppercase">
-                        {item.label}
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono font-semibold uppercase tabular-nums ${item.color}`}
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="py-12 text-center text-ink-soft/40 font-mono uppercase tracking-widest italic"
                       >
-                        {item.status}
-                      </span>
-                    </div>
-                  ))}
+                        Sin recursos registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Preparación de Viaje */}
+        <div className="hidden lg:flex w-80 flex-col gap-4 shrink-0 overflow-hidden bg-[#121110] p-4 border-2 border-black shadow-[3px_3px_0px_#000] justify-between">
+          <div className="flex flex-col gap-5 overflow-y-auto pr-1 custom-scrollbar">
+            <h3 className="text-xs font-mono font-black text-[#df8120] uppercase tracking-wider mb-2 flex items-center gap-2 border-b border-[#d4a373]/15 pb-2.5">
+              <Navigation className="h-4 w-4" /> Preparación de Viaje
+            </h3>
+
+            <div className="space-y-6">
+              {/* Deployment Viability Score */}
+              <div className="bg-black/30 border border-[#d4a373]/15 p-4 rounded-sm flex flex-col gap-3">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs font-mono text-white/40 tracking-wider uppercase font-bold">
+                    Viabilidad de Salida
+                  </span>
+                  <span
+                    className={`text-3xl font-mono font-black ${viabilityScore >= 70 ? "text-accent-approved" : viabilityScore >= 40 ? "text-[#c27c2f]" : "text-accent-critical"}`}
+                  >
+                    {viabilityScore}%
+                  </span>
+                </div>
+                <div className="h-2.5 w-full bg-black/50 border border-[#d4a373]/10 relative rounded-full overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${viabilityScore >= 70 ? "bg-[#4c6351]" : viabilityScore >= 40 ? "bg-[#c27c2f]" : "bg-[#9c2720]"}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${viabilityScore}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
+                <span className="text-[11px] font-mono text-white/50 leading-relaxed uppercase">
+                  {viabilityScore >= 80
+                    ? "✓ CONDICIONES ÓPTIMAS PARA INICIAR VIAJE."
+                    : viabilityScore >= 50
+                      ? "⚠ ATENCIÓN — VIABILIDAD REDUCIDA. EVALUAR RIESGOS."
+                      : "☠ PELIGRO — RECURSOS CRÍTICOS. SALIDA NO AUTORIZADA."}
+                </span>
+              </div>
+
+              {/* Personnel Stats */}
+              <div className="bg-black/20 border border-[#d4a373]/10 p-4 rounded-sm space-y-4 font-mono">
+                <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest border-b border-[#d4a373]/5 pb-1.5 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-white/40" /> PERSONAL EN BASE
+                </h4>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex flex-col items-center justify-center p-2.5 bg-black/30 rounded-sm border border-white/5">
+                    <span className="text-xl font-black text-white">{availableExplorersCount}</span>
+                    <span className="text-[10px] text-white/40 uppercase text-center mt-0.5 leading-none font-bold">
+                      Listos
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-2.5 bg-black/30 rounded-sm border border-white/5">
+                    <span className="text-xl font-black text-[#df8120]">{exploringCount}</span>
+                    <span className="text-[10px] text-white/40 uppercase text-center mt-0.5 leading-none font-bold">
+                      En Campo
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-2.5 bg-[#9c2720]/15 rounded-sm border border-[#9c2720]/20">
+                    <span className="text-xl font-black text-accent-critical">{sickCount}</span>
+                    <span className="text-[10px] text-white/40 uppercase text-center mt-0.5 leading-none font-bold">
+                      Bajas
+                    </span>
+                  </div>
                 </div>
 
-                {!isTripReady && criticalShortages.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-mono font-black text-red-500 uppercase flex items-center gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5" /> FALTANTES CRÍTICOS
+                <div className="text-xs text-white/30 uppercase flex justify-between pt-2 border-t border-white/5">
+                  <span>Censo Total:</span>
+                  <span className="font-bold text-white/60">{totalCampPersonnel} personas</span>
+                </div>
+              </div>
+
+              {/* Basic Supplies Checklist */}
+              <div className="bg-black/20 border border-[#d4a373]/10 p-4 rounded-sm space-y-3 font-mono text-xs">
+                <h4 className="text-xs font-bold text-white/40 uppercase tracking-widest border-b border-[#d4a373]/5 pb-1.5">
+                  ESTADO DE INSUMOS VITALES
+                </h4>
+
+                {[
+                  {
+                    label: "Suministro de Agua",
+                    status: waterStatus,
+                    color:
+                      waterStatus === "ÓPTIMA"
+                        ? "text-accent-approved bg-accent-approved/5 border-accent-approved/15"
+                        : waterStatus === "LIMITADA"
+                          ? "text-[#c27c2f] bg-[#c27c2f]/5 border-[#c27c2f]/15"
+                          : "text-accent-critical bg-accent-critical/5 border-accent-critical/15",
+                    badge: waterStatus === "ÓPTIMA" ? "✓" : "⚠",
+                  },
+                  {
+                    label: "Víveres / Raciones",
+                    status: foodStatus,
+                    color:
+                      foodStatus === "ÓPTIMA"
+                        ? "text-accent-approved bg-accent-approved/5 border-accent-approved/15"
+                        : foodStatus === "LIMITADA"
+                          ? "text-[#c27c2f] bg-[#c27c2f]/5 border-[#c27c2f]/15"
+                          : "text-accent-critical bg-accent-critical/5 border-accent-critical/15",
+                    badge: foodStatus === "ÓPTIMA" ? "✓" : "⚠",
+                  },
+                  {
+                    label: "Kits de Medicina",
+                    status: medicineStatus,
+                    color:
+                      medicineStatus === "ÓPTIMA"
+                        ? "text-accent-approved bg-accent-approved/5 border-accent-approved/15"
+                        : medicineStatus === "LIMITADA"
+                          ? "text-[#c27c2f] bg-[#c27c2f]/5 border-[#c27c2f]/15"
+                          : "text-accent-critical bg-accent-critical/5 border-accent-critical/15",
+                    badge: medicineStatus === "ÓPTIMA" ? "✓" : "⚠",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`flex justify-between items-center px-2.5 py-2 rounded-sm border ${item.color}`}
+                  >
+                    <span className="uppercase font-bold flex items-center gap-1.5">
+                      <span>{item.badge}</span> {item.label}
                     </span>
-                    <div className="space-y-1.5">
-                      {criticalShortages.slice(0, 3).map((r) => (
-                        <div
-                          key={r.id}
-                          className="flex items-center justify-between p-2 bg-red-950/20 border border-red-900/10 rounded-sm"
-                        >
-                          <span className="text-xs font-mono text-red-100/60 uppercase truncate flex-1">
-                            {r.name}
-                          </span>
-                          <span className="text-sm font-mono font-black text-red-500 ml-2">
-                            {r.quantity} {r.unit}
-                          </span>
-                        </div>
-                      ))}
-                      {criticalShortages.length > 3 && (
-                        <p className="text-sm font-mono text-white/20 text-center uppercase mt-1">
-                          + {criticalShortages.length - 3} recursos adicionales insuficientes
-                        </p>
-                      )}
-                    </div>
+                    <span className="font-black uppercase">{item.status}</span>
                   </div>
-                )}
+                ))}
               </div>
 
-              <div className="space-y-2 mt-4">
-                <button
-                  disabled={!isTripReady}
-                  className={`w-full py-2 font-mono font-semibold text-xs uppercase rounded transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 ${
-                    isTripReady
-                      ? "bg-accent-approved text-black hover:bg-white shadow-md"
-                      : "bg-white/5 text-white/20 cursor-not-allowed"
-                  }`}
-                >
-                  Preparar Exploración
-                </button>
-                {!isTripReady && (
-                  <button className="w-full py-2 bg-[#c27c2f]/80 text-black font-mono font-semibold text-xs uppercase rounded shadow-md hover:bg-[#fca311] transition-all duration-150 active:scale-95">
-                    Solicitar Suministros
-                  </button>
-                )}
-              </div>
+              {/* Critical shortages details */}
+              {!isTripReady && criticalShortages.length > 0 && (
+                <div className="space-y-3">
+                  <span className="text-xs font-mono font-black text-accent-critical uppercase flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 animate-pulse" /> FALTANTES DE STOCK
+                  </span>
+                  <div className="space-y-2">
+                    {criticalShortages.slice(0, 2).map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between p-2.5 bg-[#9c2720]/10 border border-[#9c2720]/20 rounded-sm font-mono text-xs"
+                      >
+                        <span className="text-white/60 uppercase truncate flex-1">{r.name}</span>
+                        <span className="font-black text-accent-critical ml-2">
+                          {r.quantity} {r.unit}
+                        </span>
+                      </div>
+                    ))}
+                    {criticalShortages.length > 2 && (
+                      <p className="text-[11px] font-mono text-white/30 text-center uppercase mt-1.5">
+                        + {criticalShortages.length - 2} recursos adicionales
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
 
-            <div className="mt-auto pt-3 border-t border-white/5 shrink-0">
-              <div className="p-3 bg-black/40 rounded-sm border border-[#d4a373]/20">
-                <p className="font-typewriter text-[10px] text-[#d4a373]/80 uppercase tracking-wide leading-relaxed">
-                  Nota Operativa
-                </p>
-                <p className="font-mono text-[10px] text-white/40 leading-relaxed mt-1">
-                  No autorizar salidas sin al menos 48h de raciones de emergencia.
-                </p>
-              </div>
-            </div>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/travel-manager/expeditions", { state: { openNewExploration: true } })
+              }
+              disabled={availableExplorersCount === 0 || viabilityScore < 35}
+              className="tm-action-btn tm-action-btn-primary w-full hover:brightness-110 disabled:opacity-40 disabled:brightness-100 disabled:cursor-not-allowed transition-all cursor-pointer"
+              style={{ padding: "10px 12px", borderRadius: "4px" }}
+            >
+              <span className="tm-action-label">Preparar Exploración</span>
+              <span className="tm-action-sub">Despliegue de patrulla</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ── Modal de Detalle (Ficha de Recurso) ── */}
+      <AnimatePresence>
+        {selectedResource && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setSelectedId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="tm-paper tm-paper-texture w-full max-w-lg overflow-hidden shadow-2xl relative p-8 border-4 border-double border-ink/40"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Seal mark */}
+              <div className="absolute top-10 right-10 flex flex-col items-center rotate-6 select-none opacity-20 pointer-events-none">
+                <div className="border-4 border-ink p-1 mb-1">
+                  <span className="text-lg font-black font-mono px-2">REGISTRADO</span>
+                </div>
+                <span className="text-xs font-mono font-black italic text-ink">
+                  Refugio Alfa - Logística
+                </span>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="absolute top-4 right-4 text-ink-soft hover:text-ink transition-colors"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+
+              <div className="flex-1 flex flex-col justify-between">
+                <div className="flex gap-6 border-b-2 border-dashed border-ink/20 pb-5 mb-6 items-start">
+                  {/* Icon Area */}
+                  <div className="w-16 h-16 shrink-0 bg-ink/5 border-2 border-ink/10 flex items-center justify-center rounded-sm text-3xl">
+                    {getCategoryInfo(selectedResource.category).icon}
+                  </div>
+                  <div className="flex-1 min-w-0 pt-1">
+                    <span className="text-[10px] font-mono text-[#c27c2f] uppercase tracking-widest font-black block mb-1">
+                      EXPEDIENTE DE SUMINISTROS
+                    </span>
+                    <h2 className="font-typewriter text-3xl font-black text-ink uppercase leading-none truncate">
+                      {selectedResource.name}
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+                  {/* Left Column: Details */}
+                  <div className="md:col-span-1 flex flex-col gap-4 font-mono text-xs text-ink/80 bg-ink/5 border border-ink/10 p-5 rounded-sm">
+                    <div>
+                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                        Clasificación
+                      </span>
+                      <span className="text-sm font-black text-ink uppercase">
+                        {getCategoryInfo(selectedResource.category).label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                        Asignado a Base
+                      </span>
+                      <span className="text-sm font-black text-ink uppercase">
+                        {getCampName(selectedResource.campId)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                        Unidad de Medida
+                      </span>
+                      <span className="text-sm font-black text-[#df8120] uppercase bg-[#df8120]/10 px-2 py-0.5 rounded-sm">
+                        {selectedResource.unit}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Middle & Right Column: Vital Stock & Progress */}
+                  <div className="md:col-span-2 flex flex-col gap-4">
+                    {/* Vital Stock Box */}
+                    <div className="bg-[#f5ecd7] flex-1 p-5 rounded-sm border border-[#d4c4a8]/50 flex items-center justify-between relative overflow-hidden shadow-inner">
+                      <div className="flex flex-col z-10">
+                        <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider mb-1 font-black">
+                          Inventario Disponible
+                        </span>
+                        <div className="flex items-baseline gap-2">
+                          <div className="text-5xl font-typewriter font-black text-ink leading-none tracking-tighter">
+                            {selectedResource.quantity}
+                          </div>
+                          <span className="text-xs font-mono font-black text-ink-soft uppercase">
+                            {selectedResource.unit}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`z-10 px-4 py-2 border-2 font-mono font-black text-xs uppercase shadow-sm bg-white/50 backdrop-blur-sm ${getStatusColor(selectedResource.status).replace("text-", "border-").replace("text-[#c27c2f]", "border-[#df8120]").replace("text-[#4c6351]", "border-[#4c6351]")}`}
+                      >
+                        <span className={getStatusColor(selectedResource.status)}>
+                          {getStatusLabel(selectedResource.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Threshold Bar */}
+                    <div className="bg-[#faf4e6]/50 p-4 border border-dashed border-ink/20 rounded-sm">
+                      <div className="flex justify-between items-center text-xs font-mono mb-2">
+                        <span className="text-ink-soft uppercase font-bold flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-[#df8120]" />
+                          Umbral Crítico Mínimo
+                        </span>
+                        <span className="font-black text-ink">
+                          {selectedResource.minThreshold || 0} {selectedResource.unit.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="h-4 w-full bg-ink/5 border border-ink/20 relative rounded-sm overflow-hidden">
+                        <div
+                          className={`h-full ${getLevelColor(selectedResource.status)} opacity-80 shadow-inner`}
+                          style={{
+                            width: `${Math.min((selectedResource.quantity / (selectedResource.minThreshold || 1)) * 50, 100)}%`,
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-[8px] font-mono font-black text-ink/40 uppercase tracking-[0.3em]">
+                            NIVEL_RECURSO_ACTUAL
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider block font-bold mb-1.5">
+                    Recomendación de Uso y Observaciones
+                  </span>
+                  <div className="p-4 bg-white/40 border border-ink/10 border-l-4 border-l-[#c27c2f] rounded-sm italic font-typewriter text-xs text-ink/80 leading-relaxed min-h-[60px] shadow-sm">
+                    {selectedResource.usageNotes ||
+                      selectedResource.description ||
+                      "Sin instrucciones adicionales de uso operativo registrado para este recurso."}
+                  </div>
+                </div>
+
+                <div className="border-t border-ink/15 pt-3 mt-6 flex justify-between items-center text-ink-soft/70 font-mono text-[9px] uppercase tracking-wider font-bold">
+                  <span>Actualizado: {new Date().toLocaleDateString("es-CR")}</span>
+                  <span className="border border-dashed border-ink/30 px-3 py-1">
+                    Ref. {selectedResource.id.slice(0, 8)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -1,26 +1,22 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AnimatePresence, motion } from "framer-motion"
-import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle, ArrowRight, Check, Truck, X } from "lucide-react"
+import { useMemo, useState } from "react"
 
 import { useCamp } from "../context/CampContext"
 
-import type {
-  ApprovalBody,
-  CreateTransferBody,
-} from "@/features/transfers/services/transfers.service"
-import type { IntercampRequest, Person, Resource } from "@/types/api.types"
+import type { ApprovalBody } from "@/features/transfers/services/transfers.service"
+import type { IntercampRequest } from "@/types/api.types"
 
-import { getResources } from "@/features/inventory/services/inventory.service"
 import { TransferRouteMap } from "@/features/map-test/components/TransferRouteMap"
-import { getPersons } from "@/features/persons/services/persons.service"
 import {
   approveOrRejectTransfer,
   cancelTransfer,
-  confirmTransferArrival,
-  createTransferRequest,
   getCampTransfers,
 } from "@/features/transfers/services/transfers.service"
 import "./Transfers.css"
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
 
 type TransferView = {
   id: string
@@ -36,6 +32,8 @@ type TransferView = {
   raw: IntercampRequest
 }
 
+type ModalType = "approve" | "reject" | null
+
 const TYPE_LABELS: Record<string, string> = {
   resources: "RECURSOS",
   people: "PERSONAS",
@@ -43,6 +41,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const STATUS_LABELS: Record<string, string> = {
+  ALL: "TODOS",
   pending: "PENDIENTE",
   approved: "APROBADO",
   completed: "COMPLETADO",
@@ -51,14 +50,25 @@ const STATUS_LABELS: Record<string, string> = {
   in_transit: "EN TRÁNSITO",
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "#e8c44a",
+const STATUS_BORDER: Record<string, string> = {
+  pending: "#c27c2f",
   approved: "#4c6351",
-  completed: "#4c6351",
-  in_transit: "#c27c2f",
+  in_transit: "#4c6351",
+  completed: "#5a5040",
   rejected: "#9c2720",
   cancelled: "#555",
 }
+
+const STATUS_BADGE: Record<string, string> = {
+  pending: "bg-[#c27c2f] text-black",
+  approved: "bg-[#4c6351] text-white",
+  in_transit: "bg-[#4c6351] text-white",
+  completed: "bg-[#5a5040] text-[#e8dcc8]",
+  rejected: "bg-[#9c2720] text-white",
+  cancelled: "bg-[#555] text-white",
+}
+
+const DEFAULT_COORDS: [number, number] = [9.9281, -84.0907]
 
 const formatDate = (value?: string) => {
   if (!value) return "N/D"
@@ -67,40 +77,18 @@ const formatDate = (value?: string) => {
   return date.toISOString().split("T")[0]
 }
 
-type ModalType = "detail" | "create" | "approve" | "reject" | null
-
-interface ResourceRow {
-  resource_id: string
-  requested_quantity: string
-}
-
-interface PersonRow {
-  person_id: string
-  is_leader: boolean
-}
+// ─── Componente ──────────────────────────────────────────────────────────────
 
 export default function Transfers() {
-  const { activeCampId, camps } = useCamp()
+  const { activeCampId, camps, isLoading: campsLoading } = useCamp()
 
-  const [availableResources, setAvailableResources] = useState<Resource[]>([])
-  const [availablePersons, setAvailablePersons] = useState<Person[]>([])
-  const [filterStatus, setFilterStatus] = useState("")
+  const [filterRole, setFilterRole] = useState<"ALL" | "origin" | "destination">("ALL")
+  const [filterStatus, setFilterStatus] = useState<string>("ALL")
   const [selectedTransfer, setSelectedTransfer] = useState<TransferView | null>(null)
   const [activeModal, setActiveModal] = useState<ModalType>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState("")
-
-  const [formDestId, setFormDestId] = useState("")
-  const [formType, setFormType] = useState<"resources" | "people" | "both">("resources")
   const [formNotes, setFormNotes] = useState("")
-  const [formTravelDays, setFormTravelDays] = useState("")
-  const [formResourceRows, setFormResourceRows] = useState<ResourceRow[]>([
-    { resource_id: "", requested_quantity: "" },
-  ])
-  const [formPersonRows, setFormPersonRows] = useState<PersonRow[]>([
-    { person_id: "", is_leader: false },
-  ])
-  const [formApprovalNotes, setFormApprovalNotes] = useState("")
 
   const campById = useMemo(() => new Map(camps.map((c) => [c.id, c.name])), [camps])
 
@@ -108,7 +96,6 @@ export default function Transfers() {
     data: transfers = [],
     isLoading: queryLoading,
     error: queryError,
-    refetch,
   } = useQuery({
     queryKey: ["adminTransfers", activeCampId],
     queryFn: async () => {
@@ -119,28 +106,12 @@ export default function Transfers() {
     staleTime: 1000 * 60 * 2,
   })
 
-  const isLoading = queryLoading && transfers.length === 0
-  const error = queryError ? "No se pudieron cargar las transferencias." : ""
+  const isLoading = campsLoading || (queryLoading && transfers.length === 0)
 
-  const reload = () => refetch()
+  const queryClient = useQueryClient()
+  const reload = () => queryClient.invalidateQueries({ queryKey: ["adminTransfers", activeCampId] })
 
-  useEffect(() => {
-    let isMounted = true
-    void Promise.all([
-      getResources({ limit: 100 }),
-      getPersons({ campId: activeCampId, limit: 100 }),
-    ])
-      .then(([resources, persons]) => {
-        if (!isMounted) return
-        setAvailableResources(resources)
-        setAvailablePersons(persons.data)
-      })
-      .catch(() => {})
-    return () => {
-      isMounted = false
-    }
-  }, [activeCampId])
-
+  // Mapeo de datos crudos → vista
   const mappedTransfers = useMemo<TransferView[]>(
     () =>
       transfers.map((t) => {
@@ -176,104 +147,43 @@ export default function Transfers() {
     [transfers, campById],
   )
 
-  const filteredTransfers = mappedTransfers.filter((t) => {
-    if (filterStatus && t.statusKey !== filterStatus) return false
-    return true
-  })
+  // Filtros
+  const filteredTransfers = useMemo(
+    () =>
+      mappedTransfers.filter((t) => {
+        const isOrigin = t.raw.camp_origin_id === activeCampId
+        const isDest = t.raw.camp_destination_id === activeCampId
+        const matchRole =
+          filterRole === "ALL" ||
+          (filterRole === "origin" && isOrigin) ||
+          (filterRole === "destination" && isDest)
+        const matchStatus = filterStatus === "ALL" || t.statusKey === filterStatus
+        return matchRole && matchStatus
+      }),
+    [mappedTransfers, filterRole, filterStatus, activeCampId],
+  )
 
-  const openCreate = () => {
-    setFormDestId("")
-    setFormType("resources")
-    setFormNotes("")
-    setFormTravelDays("")
-    setFormResourceRows([{ resource_id: "", requested_quantity: "" }])
-    setFormPersonRows([{ person_id: "", is_leader: false }])
-    setFormError("")
-    setActiveModal("create")
-  }
+  // ─── Acciones ──────────────────────────────────────────────────────────────
 
-  const openDetail = (transfer: TransferView) => {
-    setSelectedTransfer(transfer)
-    setFormApprovalNotes("")
-    setFormError("")
-    setActiveModal("detail")
-  }
-
-  const closeAll = () => {
+  const closeModal = () => {
     setActiveModal(null)
     setSelectedTransfer(null)
     setFormError("")
+    setFormNotes("")
   }
 
-  const addResourceRow = () =>
-    setFormResourceRows((prev) => [...prev, { resource_id: "", requested_quantity: "" }])
-
-  const removeResourceRow = (index: number) =>
-    setFormResourceRows((prev) => prev.filter((_, i) => i !== index))
-
-  const updateResourceRow = (index: number, field: keyof ResourceRow, value: string) =>
-    setFormResourceRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    )
-
-  const addPersonRow = () =>
-    setFormPersonRows((prev) => [...prev, { person_id: "", is_leader: false }])
-
-  const removePersonRow = (index: number) =>
-    setFormPersonRows((prev) => prev.filter((_, i) => i !== index))
-
-  const updatePersonRow = (index: number, field: keyof PersonRow, value: string | boolean) =>
-    setFormPersonRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    )
-
-  const handleCreate = async () => {
-    if (!formDestId) {
-      setFormError("Selecciona el campamento de destino.")
-      return
-    }
-    setIsSaving(true)
+  const openApprove = (t: TransferView) => {
+    setSelectedTransfer(t)
+    setFormNotes("")
     setFormError("")
-    try {
-      const body: CreateTransferBody = {
-        camp_origin_id: Number(activeCampId),
-        camp_destination_id: Number(formDestId),
-        type: formType,
-        notes: formNotes.trim() || undefined,
-        travel_days: formTravelDays ? Number(formTravelDays) : undefined,
-      }
-      if (formType === "resources" || formType === "both") {
-        const validRows = formResourceRows.filter((r) => r.resource_id && r.requested_quantity)
-        if (validRows.length === 0) {
-          setFormError("Agrega al menos un recurso para transferir.")
-          setIsSaving(false)
-          return
-        }
-        body.resource_details = validRows.map((r) => ({
-          resource_id: Number(r.resource_id),
-          requested_quantity: Number(r.requested_quantity),
-        }))
-      }
-      if (formType === "people" || formType === "both") {
-        const validPeople = formPersonRows.filter((p) => p.person_id)
-        if (validPeople.length === 0) {
-          setFormError("Agrega al menos una persona para trasladar.")
-          setIsSaving(false)
-          return
-        }
-        body.person_details = validPeople.map((p) => ({
-          person_id: Number(p.person_id),
-          is_leader: p.is_leader,
-        }))
-      }
-      await createTransferRequest(body)
-      closeAll()
-      reload()
-    } catch {
-      setFormError("No se pudo crear la solicitud de traslado.")
-    } finally {
-      setIsSaving(false)
-    }
+    setActiveModal("approve")
+  }
+
+  const openReject = (t: TransferView) => {
+    setSelectedTransfer(t)
+    setFormNotes("")
+    setFormError("")
+    setActiveModal("reject")
   }
 
   const handleApprove = async () => {
@@ -281,12 +191,9 @@ export default function Transfers() {
     setIsSaving(true)
     setFormError("")
     try {
-      const body: ApprovalBody = {
-        status: "approved",
-        notes: formApprovalNotes.trim() || undefined,
-      }
+      const body: ApprovalBody = { status: "approved", notes: formNotes.trim() || undefined }
       await approveOrRejectTransfer(selectedTransfer.id, body)
-      closeAll()
+      closeModal()
       reload()
     } catch {
       setFormError("No se pudo aprobar el traslado.")
@@ -300,12 +207,9 @@ export default function Transfers() {
     setIsSaving(true)
     setFormError("")
     try {
-      const body: ApprovalBody = {
-        status: "rejected",
-        notes: formApprovalNotes.trim() || undefined,
-      }
+      const body: ApprovalBody = { status: "rejected", notes: formNotes.trim() || undefined }
       await approveOrRejectTransfer(selectedTransfer.id, body)
-      closeAll()
+      closeModal()
       reload()
     } catch {
       setFormError("No se pudo rechazar el traslado.")
@@ -314,577 +218,354 @@ export default function Transfers() {
     }
   }
 
-  const handleCancel = async () => {
-    if (!selectedTransfer) return
+  const handleCancel = async (t: TransferView) => {
     setIsSaving(true)
-    setFormError("")
     try {
-      await cancelTransfer(selectedTransfer.id)
-      closeAll()
+      await cancelTransfer(t.id)
       reload()
     } catch {
-      setFormError("No se pudo cancelar el traslado.")
+      // silently fail — user will see no change and can retry
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleArrive = async () => {
-    if (!selectedTransfer) return
-    setIsSaving(true)
-    setFormError("")
-    try {
-      await confirmTransferArrival(selectedTransfer.id)
-      closeAll()
-      reload()
-    } catch {
-      setFormError("No se pudo confirmar la llegada.")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const otherCamps = camps.filter((c) => c.id !== activeCampId)
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="generic-container transfers-page">
-      <div className="section-header">
-        <h2>MANIFIESTOS DE TRANSPORTE</h2>
-        <button className="action-btn-primary" onClick={openCreate}>
-          + NUEVO TRASLADO
-        </button>
+    <div className="p-5 lg:p-6 flex flex-col gap-6">
+      {/* CABECERA */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-4 border-[#c27c2f] pb-5">
+        <div>
+          <h2 className="font-typewriter text-2xl lg:text-3xl font-bold text-[#fca311] uppercase tracking-wider">
+            MANIFIESTOS DE TRANSPORTE
+          </h2>
+          <p className="font-mono text-sm text-[#9a8a74] uppercase tracking-wider mt-1">
+            ADMINISTRACIÓN CENTRAL · TODOS LOS CAMPAMENTOS
+          </p>
+        </div>
       </div>
 
-      <div className="filters-bar">
-        <select
-          className="vintage-input"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ flex: "0 1 220px", minWidth: 0 }}
-        >
-          <option value="">Todos los estados</option>
-          {Object.entries(STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+      {/* FILTROS */}
+      <div className="flex flex-col gap-4">
+        {/* Filtro de rol */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "ALL", label: "TODOS LOS CONVOYES" },
+            { key: "origin", label: "ENVIAMOS (ORIGEN)" },
+            { key: "destination", label: "RECIBIMOS (DESTINO)" },
+          ].map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setFilterRole(opt.key as "ALL" | "origin" | "destination")}
+              className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider border-2 cursor-pointer transition-all ${
+                filterRole === opt.key
+                  ? "bg-[#c27c2f] text-white border-[#c27c2f] shadow-[2px_2px_0_rgba(0,0,0,0.6)]"
+                  : "bg-transparent border-[#9a8a74]/60 text-[#c8bfae] hover:border-[#c27c2f] hover:text-[#fca311]"
+              }`}
+            >
+              {opt.label}
+            </button>
           ))}
-        </select>
+        </div>
+
+        {/* Filtro de estado */}
+        <div className="flex flex-wrap gap-2">
+          {["ALL", "pending", "approved", "in_transit", "rejected", "cancelled"].map((st) => (
+            <button
+              key={st}
+              onClick={() => setFilterStatus(st)}
+              className={`px-3 py-1.5 font-mono text-xs uppercase border-2 cursor-pointer transition-all ${
+                filterStatus === st
+                  ? "bg-[#c27c2f] text-white border-[#c27c2f] shadow-[2px_2px_0_rgba(0,0,0,0.6)] font-bold"
+                  : "bg-transparent border-[#9a8a74]/60 text-[#c8bfae] hover:border-[#c27c2f] hover:text-[#fca311]"
+              }`}
+            >
+              {STATUS_LABELS[st] ?? st}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {error ? <div className="error-msg">{error}</div> : null}
+      {/* ESTADO DE CARGA / ERROR */}
+      {queryError ? (
+        <div className="flex items-center gap-2 text-[#9c2720] font-mono text-sm border border-[#9c2720]/40 bg-[#9c2720]/10 px-4 py-3">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          No se pudieron cargar los manifiestos.
+        </div>
+      ) : null}
 
+      {/* LISTA */}
       {isLoading ? (
-        <div className="loading-msg">CARGANDO MANIFIESTOS...</div>
+        <div className="col-span-full text-center py-20 border-2 border-dashed border-[#9a8a74]/30">
+          <Truck className="w-12 h-12 text-[#6e5f4d] mx-auto mb-4 animate-pulse" />
+          <p className="font-typewriter text-base text-[#9a8a74] uppercase font-bold">
+            CALIBRANDO FRECUENCIAS...
+          </p>
+        </div>
       ) : (
-        <motion.div
-          className="transfers-grid"
-          initial="hidden"
-          animate="show"
-          variants={{
-            hidden: { opacity: 0 },
-            show: { transition: { staggerChildren: 0.1 } },
-          }}
-        >
-          {filteredTransfers.map((transfer) => (
-            <motion.div
-              key={transfer.id}
-              className="transfer-carbon-copy"
-              variants={{
-                hidden: { opacity: 0, scale: 0.95, y: 16 },
-                show: { opacity: 1, scale: 1, y: 0 },
-              }}
-              whileHover={{ scale: 1.01, x: 6 }}
-              onClick={() => openDetail(transfer)}
-            >
-              <div className="t-header">
-                <span>TRASLADO #{transfer.id.slice(-8).toUpperCase()}</span>
-                <span
-                  className="t-status-badge"
-                  style={{ color: STATUS_COLORS[transfer.statusKey] ?? "#aaa" }}
-                >
-                  [{transfer.status}]
-                </span>
-              </div>
-              <div className="t-route">
-                <span className="t-location">{transfer.origin}</span>
-                <span className="t-arrow">➔</span>
-                <span className="t-location">{transfer.dest}</span>
-              </div>
-              <div className="t-meta">
-                <span>
-                  <strong>TIPO:</strong> {transfer.type}
-                </span>
-                {transfer.resources.length > 0 ? (
-                  <span>
-                    <strong>CARGA:</strong> {transfer.resources.slice(0, 2).join(", ")}
-                    {transfer.resources.length > 2 ? ` +${transfer.resources.length - 2} más` : ""}
-                  </span>
-                ) : null}
-                {transfer.people.length > 0 ? (
-                  <span>
-                    <strong>PASAJEROS:</strong> {transfer.people.length}
-                  </span>
-                ) : null}
-              </div>
-              <div className="t-date">FECHA: {transfer.date}</div>
-              <div className="t-watermark">{transfer.status}</div>
-            </motion.div>
-          ))}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredTransfers.length === 0 ? (
-            <div className="empty-state">SIN TRASLADOS REGISTRADOS</div>
-          ) : null}
-        </motion.div>
-      )}
+            <div className="col-span-full text-center py-20 border-2 border-dashed border-[#9a8a74]/30">
+              <Truck className="w-12 h-12 text-[#6e5f4d] mx-auto mb-4 animate-pulse" />
+              <p className="font-typewriter text-base text-[#9a8a74] uppercase font-bold">
+                SIN CONVOYES EN LA COLA
+              </p>
+              <p className="font-mono text-sm text-[#6e5f4d] mt-2 uppercase">
+                AJUSTE LOS FILTROS O CAMBIE EL CAMPAMENTO ACTIVO.
+              </p>
+            </div>
+          ) : (
+            filteredTransfers.map((t) => {
+              const isOrigin = t.raw.camp_origin_id === activeCampId
 
-      <AnimatePresence>
-        {activeModal === "create" ? (
-          <motion.div
-            className="modal-overlay"
-            key="create-transfer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeAll}
-          >
-            <motion.div
-              className="modal-card modal-card-wide"
-              initial={{ y: 60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h2>NUEVA SOLICITUD DE TRASLADO</h2>
-                <button className="modal-close-btn" onClick={closeAll}>
-                  ✕
-                </button>
-              </div>
-              <div className="modal-body">
-                <div className="form-grid">
-                  <div className="form-group form-full">
-                    <label htmlFor="field-campamento-destino-461" className="form-label">
-                      CAMPAMENTO DESTINO *
-                    </label>
-                    <select
-                      id="field-campamento-destino-461"
-                      className="vintage-input full-width"
-                      value={formDestId}
-                      onChange={(e) => setFormDestId(e.target.value)}
-                    >
-                      <option value="">Seleccionar destino...</option>
-                      {otherCamps.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group form-full">
-                    <div className="form-label">TIPO DE TRASLADO</div>
-                    <div className="radio-group">
-                      {(["resources", "people", "both"] as const).map((t) => (
-                        <label key={t} className="radio-label">
-                          <input
-                            type="radio"
-                            value={t}
-                            checked={formType === t}
-                            onChange={() => setFormType(t)}
-                          />
-                          {TYPE_LABELS[t]}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <div className="form-label">DÍAS DE VIAJE</div>
-                    <input
-                      type="number"
-                      min="1"
-                      className="vintage-input full-width"
-                      value={formTravelDays}
-                      onChange={(e) => setFormTravelDays(e.target.value)}
-                      placeholder="1"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <div className="form-label">NOTAS</div>
-                    <input
-                      className="vintage-input full-width"
-                      value={formNotes}
-                      onChange={(e) => setFormNotes(e.target.value)}
-                      placeholder="Observaciones..."
-                    />
-                  </div>
+              const originCampObj = camps.find((c) => c.id === t.raw.camp_origin_id)
+              const destCampObj = camps.find((c) => c.id === t.raw.camp_destination_id)
 
-                  {(formType === "resources" || formType === "both") && (
-                    <div className="form-group form-full">
-                      <label htmlFor="field-recursos-a-transferir-514" className="form-label">
-                        RECURSOS A TRANSFERIR
-                      </label>
-                      <div className="resource-rows">
-                        {formResourceRows.map((row, index) => (
-                          <div key={index} className="resource-row">
-                            <select
-                              id="field-recursos-a-transferir-514"
-                              className="vintage-input"
-                              value={row.resource_id}
-                              onChange={(e) =>
-                                updateResourceRow(index, "resource_id", e.target.value)
-                              }
-                              style={{ flex: 1, minWidth: 0 }}
-                            >
-                              <option value="">Seleccionar recurso...</option>
-                              {availableResources.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.name} ({r.unit})
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="number"
-                              min="1"
-                              className="vintage-input qty"
-                              value={row.requested_quantity}
-                              onChange={(e) =>
-                                updateResourceRow(index, "requested_quantity", e.target.value)
-                              }
-                              placeholder="Cant."
-                            />
-                            {formResourceRows.length > 1 ? (
-                              <button
-                                className="remove-row-btn"
-                                onClick={() => removeResourceRow(index)}
-                              >
-                                ✕
-                              </button>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                      <button className="add-row-btn" onClick={addResourceRow}>
-                        + AGREGAR RECURSO
-                      </button>
-                    </div>
-                  )}
+              const originCoords: [number, number] =
+                originCampObj?.latitude != null && originCampObj?.longitude != null
+                  ? [Number(originCampObj.latitude), Number(originCampObj.longitude)]
+                  : DEFAULT_COORDS
+              const destCoords: [number, number] =
+                destCampObj?.latitude != null && destCampObj?.longitude != null
+                  ? [Number(destCampObj.latitude), Number(destCampObj.longitude)]
+                  : DEFAULT_COORDS
 
-                  {(formType === "people" || formType === "both") && (
-                    <div className="form-group form-full">
-                      <label htmlFor="field-personas-a-trasladar-562" className="form-label">
-                        PERSONAS A TRASLADAR
-                      </label>
-                      <div className="resource-rows">
-                        {formPersonRows.map((row, index) => (
-                          <div key={index} className="resource-row">
-                            <select
-                              id="field-personas-a-trasladar-562"
-                              className="vintage-input"
-                              value={row.person_id}
-                              onChange={(e) => updatePersonRow(index, "person_id", e.target.value)}
-                              style={{ flex: 1, minWidth: 0 }}
-                            >
-                              <option value="">Seleccionar persona...</option>
-                              {availablePersons.map((p) => {
-                                const fullName = [p.first_name, p.last_name]
-                                  .filter(Boolean)
-                                  .join(" ")
-                                return (
-                                  <option key={p.id} value={p.id}>
-                                    {fullName}
-                                  </option>
-                                )
-                              })}
-                            </select>
-                            <label className="leader-label">
-                              <input
-                                type="checkbox"
-                                checked={row.is_leader}
-                                onChange={(e) =>
-                                  updatePersonRow(index, "is_leader", e.target.checked)
-                                }
-                              />
-                              Líder
-                            </label>
-                            {formPersonRows.length > 1 ? (
-                              <button
-                                className="remove-row-btn"
-                                onClick={() => removePersonRow(index)}
-                              >
-                                ✕
-                              </button>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                      <button className="add-row-btn" onClick={addPersonRow}>
-                        + AGREGAR PERSONA
-                      </button>
-                    </div>
-                  )}
+              const borderColor = STATUS_BORDER[t.statusKey] ?? "#555"
 
-                  {formError ? <div className="form-error">{formError}</div> : null}
-                </div>
-              </div>
-              <div className="modal-actions">
-                <button className="action-btn-secondary" onClick={closeAll}>
-                  CANCELAR
-                </button>
-                <button
-                  className="action-btn-primary"
-                  onClick={() => void handleCreate()}
-                  disabled={isSaving}
+              return (
+                <div
+                  key={t.id}
+                  className="bg-[#e8dcc8] border-2 border-black shadow-[5px_5px_0_#000] flex flex-col"
+                  style={{ borderLeft: `6px solid ${borderColor}` }}
                 >
-                  {isSaving ? "ENVIANDO..." : "CREAR SOLICITUD"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-
-        {(activeModal === "detail" || activeModal === "approve" || activeModal === "reject") &&
-        selectedTransfer ? (
-          <motion.div
-            className="modal-overlay"
-            key="transfer-detail"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeAll}
-          >
-            <motion.div
-              className="modal-card modal-card-wide"
-              initial={{ y: 60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {activeModal === "detail" && (
-                <>
-                  <div className="modal-header">
-                    <h2>MANIFIESTO COMPLETO</h2>
-                    <button className="modal-close-btn" onClick={closeAll}>
-                      ✕
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="detail-row">
-                      <span className="detail-label">ID</span>
-                      <span className="detail-value">{selectedTransfer.id}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">ESTADO</span>
+                  {/* CABECERA DE CARD */}
+                  <div className="flex justify-between items-start p-6 pb-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono text-xs font-bold text-black/40 uppercase tracking-widest">
+                        TRASLADO #{t.id.slice(-8).toUpperCase()}
+                      </span>
                       <span
-                        className="detail-value"
-                        style={{ color: STATUS_COLORS[selectedTransfer.statusKey] ?? "inherit" }}
+                        className={`font-typewriter text-xs font-bold px-3 py-1.5 uppercase border-2 border-black self-start ${STATUS_BADGE[t.statusKey] ?? "bg-[#555] text-white"}`}
                       >
-                        {selectedTransfer.status}
+                        {t.status}
                       </span>
                     </div>
-                    <div className="detail-row">
-                      <span className="detail-label">TIPO</span>
-                      <span className="detail-value">{selectedTransfer.type}</span>
+                    <div className="text-right font-mono text-xs text-black/50 uppercase">
+                      <div>{t.type}</div>
+                      <div className="mt-1 text-[10px]">{t.date}</div>
                     </div>
-                    <div className="detail-row">
-                      <span className="detail-label">RUTA</span>
-                      <span className="detail-value">
-                        {selectedTransfer.origin} ➔ {selectedTransfer.dest}
-                      </span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">FECHA</span>
-                      <span className="detail-value">{selectedTransfer.date}</span>
-                    </div>
-                    {selectedTransfer.notes ? (
-                      <div className="detail-row">
-                        <span className="detail-label">NOTAS</span>
-                        <span className="detail-value">{selectedTransfer.notes}</span>
-                      </div>
-                    ) : null}
-                    {selectedTransfer.resources.length > 0 ? (
-                      <div className="detail-row">
-                        <span className="detail-label">CARGA</span>
-                        <span className="detail-value">
-                          {selectedTransfer.resources.map((r) => (
-                            <div key={r}>{r}</div>
-                          ))}
+                  </div>
+
+                  {/* RUTA */}
+                  <div className="mx-6 mb-2 flex items-center gap-3 bg-black/10 border border-black/15 px-4 py-3">
+                    <span className="font-typewriter text-sm font-bold text-black truncate">
+                      {t.origin}
+                    </span>
+                    <ArrowRight className="w-5 h-5 text-black/50 shrink-0" />
+                    <span className="font-typewriter text-sm font-bold text-black truncate text-right">
+                      {t.dest}
+                    </span>
+                  </div>
+
+                  {/* MINI-MAPA */}
+                  {}
+                  <div
+                    className="mx-6 mb-3 wv-transfer-minimap"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <TransferRouteMap
+                      fromCoords={originCoords}
+                      toCoords={destCoords}
+                      fromName={t.origin}
+                      toName={t.dest}
+                    />
+                  </div>
+
+                  {/* CARGA / PASAJEROS */}
+                  <div className="px-6 flex flex-col gap-3 flex-1">
+                    {t.resources.length > 0 ? (
+                      <div>
+                        <span className="font-mono text-xs font-bold text-black/50 uppercase tracking-wider block mb-1">
+                          CARGA
                         </span>
+                        <div className="font-typewriter text-sm font-bold text-black">
+                          {t.resources.join(" · ")}
+                        </div>
                       </div>
                     ) : null}
-                    {selectedTransfer.people.length > 0 ? (
-                      <div className="detail-row">
-                        <span className="detail-label">PASAJEROS</span>
-                        <span className="detail-value">
-                          {selectedTransfer.people.map((p) => (
-                            <div key={p}>{p}</div>
-                          ))}
+                    {t.people.length > 0 ? (
+                      <div>
+                        <span className="font-mono text-xs font-bold text-black/50 uppercase tracking-wider block mb-1">
+                          PASAJEROS
                         </span>
+                        <div className="font-typewriter text-sm font-bold text-black">
+                          {t.people.join(", ")}
+                        </div>
                       </div>
                     ) : null}
-                    {(() => {
-                      const originCamp = camps.find(
-                        (c) => c.id === selectedTransfer.raw.camp_origin_id,
-                      )
-                      const destCamp = camps.find(
-                        (c) => c.id === selectedTransfer.raw.camp_destination_id,
-                      )
-                      const fromCoords: [number, number] | null =
-                        originCamp?.latitude != null && originCamp?.longitude != null
-                          ? [Number(originCamp.latitude), Number(originCamp.longitude)]
-                          : null
-                      const toCoords: [number, number] | null =
-                        destCamp?.latitude != null && destCamp?.longitude != null
-                          ? [Number(destCamp.latitude), Number(destCamp.longitude)]
-                          : null
-                      if (!fromCoords || !toCoords) return null
-                      return (
-                        <TransferRouteMap
-                          fromCoords={fromCoords}
-                          toCoords={toCoords}
-                          fromName={selectedTransfer.origin}
-                          toName={selectedTransfer.dest}
-                        />
-                      )
-                    })()}
-                    {formError ? (
-                      <div className="form-error" style={{ marginTop: 16 }}>
-                        {formError}
-                      </div>
+                    {t.notes ? (
+                      <p className="font-mono text-sm text-black/60 italic">* {t.notes}</p>
                     ) : null}
                   </div>
-                  <div className="modal-actions">
-                    {selectedTransfer.statusKey === "pending" && (
-                      <>
+
+                  {/* ACCIONES */}
+                  <div className="border-t-2 border-black/15 p-6 pt-4 mt-4 flex flex-col gap-2">
+                    {/* Pendiente + somos destino → APROBAR / RECHAZAR */}
+                    {t.statusKey === "pending" && !isOrigin ? (
+                      <div className="flex gap-3">
                         <button
-                          className="action-btn-approve"
-                          onClick={() => {
-                            setFormApprovalNotes("")
-                            setFormError("")
-                            setActiveModal("approve")
-                          }}
+                          onClick={() => openApprove(t)}
+                          className="flex-1 bg-[#4c6351] text-white py-3 px-4 hover:bg-[#3b4d3e] cursor-pointer font-typewriter text-sm font-bold uppercase border-2 border-black flex items-center justify-center gap-2"
                         >
+                          <Check className="w-4 h-4" />
                           APROBAR
                         </button>
                         <button
-                          className="action-btn-danger"
-                          onClick={() => {
-                            setFormApprovalNotes("")
-                            setFormError("")
-                            setActiveModal("reject")
-                          }}
+                          onClick={() => openReject(t)}
+                          className="bg-red-800 hover:bg-red-700 text-white py-3 px-4 cursor-pointer border-2 border-black flex items-center gap-2 font-typewriter text-sm font-bold uppercase"
                         >
+                          <X className="w-4 h-4" />
                           RECHAZAR
                         </button>
-                        <button
-                          className="action-btn-secondary"
-                          onClick={() => void handleCancel()}
-                          disabled={isSaving}
-                        >
-                          {isSaving ? "..." : "CANCELAR TRASLADO"}
-                        </button>
-                      </>
-                    )}
-                    {selectedTransfer.statusKey === "in_transit" && (
+                      </div>
+                    ) : null}
+
+                    {/* Pendiente + somos origen → CANCELAR */}
+                    {t.statusKey === "pending" && isOrigin ? (
                       <button
-                        className="action-btn-approve"
-                        onClick={() => void handleArrive()}
+                        onClick={() => void handleCancel(t)}
                         disabled={isSaving}
+                        className="w-full bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white font-typewriter text-sm py-3 px-4 border-2 border-black cursor-pointer uppercase flex items-center justify-center gap-2"
                       >
-                        {isSaving ? "CONFIRMANDO..." : "CONFIRMAR LLEGADA"}
+                        <X className="w-4 h-4" />
+                        CANCELAR SOLICITUD
                       </button>
-                    )}
-                    <button className="action-btn-secondary" onClick={closeAll}>
-                      CERRAR
-                    </button>
-                  </div>
-                </>
-              )}
+                    ) : null}
 
-              {activeModal === "approve" && (
-                <>
-                  <div className="modal-header">
-                    <h2>APROBAR TRASLADO</h2>
-                    <button className="modal-close-btn" onClick={() => setActiveModal("detail")}>
-                      ✕
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="form-grid">
-                      <div className="form-group form-full">
-                        <label htmlFor="field-799" className="form-label">
-                          NOTAS DE APROBACIÓN (opcional)
-                        </label>
-                        <textarea
-                          id="field-799"
-                          className="vintage-input full-width"
-                          rows={3}
-                          value={formApprovalNotes}
-                          onChange={(e) => setFormApprovalNotes(e.target.value)}
-                          placeholder="Condiciones o comentarios..."
-                        />
+                    {/* En tránsito/aprobado → convoy en ruta (sin recepción) */}
+                    {t.statusKey === "in_transit" || t.statusKey === "approved" ? (
+                      <div className="text-center py-3 bg-black/10 text-black/60 font-typewriter text-sm uppercase font-bold tracking-wider border-2 border-black/15">
+                        CONVOY EN RUTA
                       </div>
-                      {formError ? <div className="form-error">{formError}</div> : null}
-                    </div>
-                  </div>
-                  <div className="modal-actions">
-                    <button
-                      className="action-btn-secondary"
-                      onClick={() => setActiveModal("detail")}
-                    >
-                      CANCELAR
-                    </button>
-                    <button
-                      className="action-btn-approve"
-                      onClick={() => void handleApprove()}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "APROBANDO..." : "CONFIRMAR APROBACIÓN"}
-                    </button>
-                  </div>
-                </>
-              )}
+                    ) : null}
 
-              {activeModal === "reject" && (
-                <>
-                  <div className="modal-header">
-                    <h2>RECHAZAR TRASLADO</h2>
-                    <button className="modal-close-btn" onClick={() => setActiveModal("detail")}>
-                      ✕
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="form-grid">
-                      <div className="form-group form-full">
-                        <label htmlFor="field-840" className="form-label">
-                          MOTIVO DE RECHAZO (opcional)
-                        </label>
-                        <textarea
-                          id="field-840"
-                          className="vintage-input full-width"
-                          rows={3}
-                          value={formApprovalNotes}
-                          onChange={(e) => setFormApprovalNotes(e.target.value)}
-                          placeholder="Razón del rechazo..."
-                        />
+                    {t.statusKey === "completed" ? (
+                      <div className="text-center text-black/50 font-typewriter text-sm uppercase font-bold py-3 border-2 border-black/15">
+                        ENTREGADO — ARCHIVADO
                       </div>
-                      {formError ? <div className="form-error">{formError}</div> : null}
-                    </div>
+                    ) : null}
+
+                    {t.statusKey === "rejected" ? (
+                      <div className="text-center bg-[#9c2720]/15 text-[#9c2720] font-typewriter text-sm uppercase font-bold tracking-wider border-2 border-[#9c2720]/30 py-3">
+                        TRASLADO RECHAZADO
+                      </div>
+                    ) : null}
+
+                    {t.statusKey === "cancelled" ? (
+                      <div className="text-center text-black/40 font-typewriter text-sm uppercase font-bold tracking-wider py-3">
+                        — CONVOY CANCELADO —
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="modal-actions">
-                    <button
-                      className="action-btn-secondary"
-                      onClick={() => setActiveModal("detail")}
-                    >
-                      CANCELAR
-                    </button>
-                    <button
-                      className="action-btn-danger"
-                      onClick={() => void handleReject()}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? "RECHAZANDO..." : "CONFIRMAR RECHAZO"}
-                    </button>
-                  </div>
-                </>
-              )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {/* MODALES APROBAR / RECHAZAR */}
+      <AnimatePresence>
+        {(activeModal === "approve" || activeModal === "reject") && selectedTransfer ? (
+          <motion.div
+            key="action-modal"
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeModal}
+          >
+            <motion.div
+              className="bg-zinc-950 border-4 border-[#c27c2f] max-w-md w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
+                <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
+                  <Truck className="w-5 h-5" />
+                  {activeModal === "approve" ? "APROBAR TRASLADO" : "RECHAZAR TRASLADO"}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-zinc-400 hover:text-white cursor-pointer font-bold"
+                >
+                  [X]
+                </button>
+              </div>
+
+              <p className="font-mono text-xs text-zinc-400 uppercase mb-4">
+                {selectedTransfer.origin} → {selectedTransfer.dest}
+              </p>
+
+              {formError ? (
+                <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  {formError}
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-1 mb-5">
+                <label
+                  htmlFor="modal-notes"
+                  className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                >
+                  {activeModal === "approve"
+                    ? "NOTAS DE APROBACIÓN (opcional)"
+                    : "MOTIVO DE RECHAZO (opcional)"}
+                </label>
+                <textarea
+                  id="modal-notes"
+                  className="w-full bg-[#111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 focus:outline-none focus:border-[#c27c2f] h-20 resize-none"
+                  placeholder={
+                    activeModal === "approve"
+                      ? "Condiciones o comentarios..."
+                      : "Razón del rechazo..."
+                  }
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 border-t border-zinc-900 pt-4">
+                <button
+                  onClick={closeModal}
+                  className="bg-[#9a9080] hover:bg-[#ab9e8b] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer"
+                >
+                  CANCELAR
+                </button>
+                {activeModal === "approve" ? (
+                  <button
+                    onClick={() => void handleApprove()}
+                    disabled={isSaving}
+                    className="flex-1 bg-[#4c6351] hover:bg-[#3b4d3e] disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    {isSaving ? "APROBANDO..." : "CONFIRMAR APROBACIÓN"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void handleReject()}
+                    disabled={isSaving}
+                    className="flex-1 bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    {isSaving ? "RECHAZANDO..." : "CONFIRMAR RECHAZO"}
+                  </button>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

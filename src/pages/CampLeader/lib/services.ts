@@ -20,7 +20,7 @@ export const explorationsService = {
     const params: Record<string, unknown> = { campId }
     if (status) params.status = status
     const { data } = await api.get("/explorations", { params })
-    return data
+    return Array.isArray(data) ? data : (data?.data ?? [])
   },
 
   async getExplorationById(id: number) {
@@ -111,7 +111,21 @@ export const transfersService = {
     const { data } = await api.get(`/transfers/requests/camp/${campId}`, {
       params: filters,
     })
-    return data
+
+    const list: any[] = Array.isArray(data) ? data : (data?.data ?? [])
+    return list.map((t) => ({
+      id: t.id,
+      origin_camp_id: t.camp_origin_id ?? t.origin_camp_id,
+      destination_camp_id: t.camp_destination_id ?? t.destination_camp_id,
+      resource_id: t.resourceDetails?.[0]?.resource_id ?? t.resource_id ?? null,
+      quantity: t.resourceDetails?.[0]?.requested_quantity ?? t.quantity ?? 0,
+      status: t.status,
+      requested_by_user_id: t.requested_by_user_id ?? 0,
+      notes: t.notes ?? null,
+      resource: t.resourceDetails?.[0]?.resource ?? t.resource ?? null,
+      origin_camp: t.campOrigin ?? t.origin_camp ?? null,
+      destination_camp: t.campDestination ?? t.destination_camp ?? null,
+    }))
   },
 
   async getCampPendingTransfers(campId: number) {
@@ -153,11 +167,6 @@ export const transfersService = {
     return data
   },
 
-  async arriveTransferRequest(id: number) {
-    const { data } = await api.patch(`/transfers/requests/${id}/arrive`)
-    return data
-  },
-
   async getTransferStatistics(campId: number) {
     const { data } = await api.get(`/transfers/statistics/${campId}`)
     return data
@@ -171,18 +180,16 @@ export const resourcesService = {
   async getCampInventory(campId: number) {
     try {
       const { data } = await api.get(`/resources/inventory/${campId}`)
+      const items = Array.isArray(data) ? data : (data?.inventory_items ?? [])
       // Normalize to the shape the UI expects
-      return Array.isArray(data)
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data.map((item: any) => ({
-            camp_id: item.camp_id ?? campId,
-            resource_id: item.resource?.id ?? item.resource_id,
-            current_quantity: Number(item.current_quantity ?? 0),
-            minimum_stock_required: Number(item.minimum_stock_required ?? 0),
-            alert_active: item.alert_active ?? false,
-            resource: item.resource,
-          }))
-        : []
+      return items.map((item: any) => ({
+        camp_id: item.camp_id ?? campId,
+        resource_id: item.resource?.id ?? item.resource_id,
+        current_quantity: Number(item.current_quantity ?? 0),
+        minimum_stock_required: Number(item.minimum_stock_required ?? 0),
+        alert_active: item.alert_active ?? false,
+        resource: item.resource,
+      }))
     } catch {
       return []
     }
@@ -219,7 +226,7 @@ export const usersService = {
     const { data } = await api.get("/users/persons", { params })
     const list = Array.isArray(data) ? data : (data.data ?? [])
     // Map to the shape the CampLeader UI expects
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     return list.map((p: any) => ({
       id: p.id,
       username: `${p.first_name} ${p.last_name}`,
@@ -233,13 +240,17 @@ export const usersService = {
       expeditionsSurvived: p.expeditions_survived ?? 0,
       experience_level: Math.min(5, Math.floor((p.experience_points ?? 0) / 100) + 1),
       profession: p.profession
-        ? { 
-            id: p.profession.id ?? 0, 
+        ? {
+            id: p.profession.id ?? 0,
             name: p.profession.name ?? "Desconocida",
-            can_explore: p.profession.can_explore ?? false 
+            can_explore: p.profession.can_explore ?? false,
           }
         : { id: 0, name: "Desconocida", can_explore: false },
-      achievements: p.achievements ?? [],
+      achievements: Array.isArray(p.achievements)
+        ? p.achievements
+            .map((a: any) => (typeof a === "string" ? a : a?.achievement_name))
+            .filter(Boolean)
+        : [],
       previous_skills: p.previous_skills ?? "",
       photo_url: p.photo_url ?? undefined,
     }))
@@ -250,30 +261,22 @@ export const usersService = {
     return data
   },
 
-  /** Balance diario: uses dashboard metrics as source of truth */
-  async getCampBalances(campId: number) {
+  /** Single call that returns both balances and statistics — avoids two /dashboard round trips */
+  async getCampDashboard(campId: number) {
     try {
       const { data } = await api.get(`/dashboard/${campId}`)
+      const camp = data?.camp ?? {}
       const resources = data?.warehouse?.inventory ?? []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return resources.map((item: any) => ({
+
+      const balances = resources.map((item: any) => ({
         resource_id: item.resource_id,
         resource_name: item.resource_name ?? "Recurso",
         production: item.daily_production ?? 0,
         consumption: item.daily_consumption ?? 0,
         net: (item.daily_production ?? 0) - (item.daily_consumption ?? 0),
       }))
-    } catch {
-      return []
-    }
-  },
 
-  /** Camp statistics: derived from dashboard metrics */
-  async getCampStatistics(campId: number) {
-    try {
-      const { data } = await api.get(`/dashboard/${campId}`)
-      const camp = data?.camp ?? {}
-      return {
+      const statistics = {
         total_persons: camp.total_people ?? 0,
         active_workers: camp.active_workers ?? 0,
         injured_or_sick: camp.sick_or_injured ?? 0,
@@ -283,19 +286,34 @@ export const usersService = {
           ? Math.round(((camp.total_people ?? 0) / camp.camp_capacity) * 100)
           : 0,
         explorations_completed: camp.explorations_completed ?? 0,
-        survival_score: data?.survival_score ?? 0,
+        survival_score: camp?.survival_score ?? data?.survival_score ?? 0,
       }
+
+      return { balances, statistics }
     } catch {
       return {
-        total_persons: 0,
-        active_workers: 0,
-        injured_or_sick: 0,
-        exploring: 0,
-        deceased: 0,
-        occupancy_rate: 0,
-        explorations_completed: 0,
-        survival_score: 0,
+        balances: [],
+        statistics: {
+          total_persons: 0,
+          active_workers: 0,
+          injured_or_sick: 0,
+          exploring: 0,
+          deceased: 0,
+          occupancy_rate: 0,
+          explorations_completed: 0,
+          survival_score: 0,
+        },
       }
     }
+  },
+
+  /** @deprecated Use getCampDashboard instead */
+  async getCampBalances(campId: number) {
+    return (await usersService.getCampDashboard(campId)).balances
+  },
+
+  /** @deprecated Use getCampDashboard instead */
+  async getCampStatistics(campId: number) {
+    return (await usersService.getCampDashboard(campId)).statistics
   },
 }

@@ -1,503 +1,916 @@
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  User,
-  Users,
-  TrendingUp,
-  Award,
-  CheckCircle,
-  Shield,
-  Star,
-  X,
-  FileText,
-} from "lucide-react"
+import { Award, FileText, Shield, Star, Trophy } from "lucide-react"
 import { useState } from "react"
 
-import Badge, { ACHIEVEMENTS_DICT } from "./Badge"
-
-import type { Person, CampStatistics } from "../types"
+import type { CampStatistics } from "../types"
 import type { AuthUser } from "@/types/api.types"
 
 interface ProfileViewProps {
   user: AuthUser | null
   statistics: CampStatistics
-  residents: Person[]
+
+  residents: any[]
 }
 
-export default function ProfileView({ user, statistics, residents }: ProfileViewProps) {
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
+// ── Rank tiers ─────────────────────────────────────────────────────────────────
+const RANK_TIERS = [
+  { min: 0, label: "RECLUTA", color: "#635b50" },
+  { min: 100, label: "EXPLORADOR", color: "#3b7a5a" },
+  { min: 300, label: "VETERANO", color: "#8f581e" },
+  { min: 600, label: "COMANDANTE", color: "#c27c2f" },
+  { min: 900, label: "LEYENDA DEL PÁRAMO", color: "#b38536" },
+]
 
-  // Status color badges
-  const getStatusBadge = (status: Person["status"]) => {
-    switch (status) {
-      case "active":
-        return (
-          <span className="bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold">
-            ACTIVO
-          </span>
-        )
-      case "sick":
-        return (
-          <span className="bg-amber-950/40 text-amber-500 border border-amber-500/30 text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold">
-            ENFERMO
-          </span>
-        )
-      case "injured":
-        return (
-          <span className="bg-red-950/40 text-red-400 border border-red-500/35 text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold">
-            LESIONADO
-          </span>
-        )
-      case "exploring":
-        return (
-          <span className="bg-blue-950/40 text-blue-400 border border-blue-500/30 text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold animate-pulse">
-            EMBARCADO
-          </span>
-        )
-      case "deceased":
-        return (
-          <span className="bg-zinc-900 border border-zinc-700 text-[9px] text-zinc-500 font-mono px-1.5 py-0.5 rounded uppercase font-bold">
-            FALLECIDO
-          </span>
-        )
-      default:
-        return null
-    }
-  }
+function getRank(score: number) {
+  return [...RANK_TIERS].reverse().find((t) => score >= t.min) ?? RANK_TIERS[0]
+}
+function getNextRank(score: number) {
+  return RANK_TIERS.find((t) => t.min > score) ?? null
+}
 
+// ── Trophies ───────────────────────────────────────────────────────────────────
+interface TrophyDef {
+  id: string
+  name: string
+  description: string
+  icon: string
+  rarity: 1 | 2 | 3 | 4 | 5
+  unlocked: boolean
+  progress?: number
+  progressLabel?: string
+}
+
+const RARITY_LABEL: Record<number, string> = {
+  1: "COMÚN",
+  2: "INFRECUENTE",
+  3: "RARO",
+  4: "ÉPICO",
+  5: "LEGENDARIO",
+}
+
+function buildTrophies(s: CampStatistics): TrophyDef[] {
+  return [
+    {
+      id: "primer_mando",
+      name: "PRIMER MANDO",
+      description: "Accediste al sistema como Líder de Campamento.",
+      icon: "⚔️",
+      rarity: 1,
+      unlocked: true,
+    },
+    {
+      id: "base_5",
+      name: "BASE ESTABLECIDA",
+      description: "Campamento con 5+ sobrevivientes registrados.",
+      icon: "🏕️",
+      rarity: 1,
+      unlocked: s.total_persons >= 5,
+      progress: Math.min(100, (s.total_persons / 5) * 100),
+      progressLabel: `${s.total_persons}/5`,
+    },
+    {
+      id: "primera_exp",
+      name: "PRIMERA EXPEDICIÓN",
+      description: "Al menos una expedición completada con éxito.",
+      icon: "🧭",
+      rarity: 2,
+      unlocked: s.explorations_completed >= 1,
+      progress: Math.min(100, s.explorations_completed * 100),
+      progressLabel: `${s.explorations_completed}/1`,
+    },
+    {
+      id: "mano_obra",
+      name: "FUERZA LABORAL",
+      description: "10+ trabajadores activos simultáneamente.",
+      icon: "👷",
+      rarity: 2,
+      unlocked: s.active_workers >= 10,
+      progress: Math.min(100, (s.active_workers / 10) * 100),
+      progressLabel: `${s.active_workers}/10`,
+    },
+    {
+      id: "pts_100",
+      name: "PUNTOS DE HONOR",
+      description: "Alcanzaste 100 puntos de supervivencia.",
+      icon: "🏅",
+      rarity: 2,
+      unlocked: s.survival_score >= 100,
+      progress: Math.min(100, (s.survival_score / 100) * 100),
+      progressLabel: `${s.survival_score}/100`,
+    },
+    {
+      id: "exp_5",
+      name: "EXPLORADOR CURTIDO",
+      description: "5+ expediciones completadas.",
+      icon: "🗺️",
+      rarity: 3,
+      unlocked: s.explorations_completed >= 5,
+      progress: Math.min(100, (s.explorations_completed / 5) * 100),
+      progressLabel: `${s.explorations_completed}/5`,
+    },
+    {
+      id: "pop_20",
+      name: "COMUNIDAD ORGANIZADA",
+      description: "20+ personas registradas en el campamento.",
+      icon: "🏙️",
+      rarity: 3,
+      unlocked: s.total_persons >= 20,
+      progress: Math.min(100, (s.total_persons / 20) * 100),
+      progressLabel: `${s.total_persons}/20`,
+    },
+    {
+      id: "pts_300",
+      name: "VETERANO DEL PÁRAMO",
+      description: "Alcanzaste 300 puntos de supervivencia.",
+      icon: "🌟",
+      rarity: 4,
+      unlocked: s.survival_score >= 300,
+      progress: Math.min(100, (s.survival_score / 300) * 100),
+      progressLabel: `${s.survival_score}/300`,
+    },
+    {
+      id: "exp_10",
+      name: "VETERANO DE CAMPO",
+      description: "10+ expediciones completadas con éxito.",
+      icon: "🎖️",
+      rarity: 4,
+      unlocked: s.explorations_completed >= 10,
+      progress: Math.min(100, (s.explorations_completed / 10) * 100),
+      progressLabel: `${s.explorations_completed}/10`,
+    },
+    {
+      id: "leyenda",
+      name: "LEYENDA DEL PÁRAMO",
+      description: "900 puntos de supervivencia. Rango máximo alcanzado.",
+      icon: "👑",
+      rarity: 5,
+      unlocked: s.survival_score >= 900,
+      progress: Math.min(100, (s.survival_score / 900) * 100),
+      progressLabel: `${s.survival_score}/900`,
+    },
+  ]
+}
+
+// Admin paper palette
+const PAPER = "#e3ddcd"
+const PAPER_D = "#cdc8bc"
+const PAPER_S = "#635b50"
+const INK = "#000000"
+const SHADOW = "3px 3px 0px #000"
+const SHADOW_L = "5px 5px 0px #000"
+
+const paperCard = {
+  background: PAPER,
+  border: `2px solid ${INK}`,
+  boxShadow: SHADOW,
+  color: INK,
+}
+
+// ── Trophy detail modal ────────────────────────────────────────────────────────
+function TrophyModal({ trophy, onClose }: { trophy: TrophyDef | null; onClose: () => void }) {
   return (
-    <div className="p-10 space-y-10">
-      {/* PAGE HEADER */}
-      <div className="border-b border-[#c27c2f]/30 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
-        <div>
-          <h2 className="font-typewriter text-2xl font-bold tracking-wider text-[#fca311] uppercase uppercase">
-            EXPEDIENTE JURIDICO DEL REFUGIO Y COMBATIENTES
-          </h2>
-          <p className="font-mono text-xs text-[#fca311]/60 uppercase tracking-widest">
-            REGISTRO DE PERSONAS DE COMBATE, SALUD VITAL Y EXPEDIENTES EXCURSIONISTAS
-          </p>
-        </div>
-        <div className="vintage-tape mt-2 md:mt-0">CONFIDENCIAL COMANDANTE</div>
-      </div>
-
-      {/* COMMANDER & BUNKER MACRO OVERVIEWS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COL 1: COMMANDER METRICS OVERVIEW */}
-        <div
-          id="commander-manifest-card"
-          className="bg-[#9a9080] border border-black relative overflow-hidden text-black transition-transform hover:scale-[1.01] p-8 flex flex-col justify-between"
+    <AnimatePresence>
+      {trophy && (
+        <motion.div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
         >
-          <div>
-            <span className="font-mono text-[9px] font-bold text-zinc-600 block uppercase tracking-wider">
-              [IDENTIFICACION CONSEJO MILITAR]
-            </span>
-            <h3 className="font-typewriter text-md font-bold text-black uppercase mt-1 leading-5">
-              MANIFEST DE COMANDANCIA ALFA
-            </h3>
-
-            <div className="border border-dashed border-black/25 rounded p-3 bg-black/5 mt-4 space-y-2 text-xs font-mono text-zinc-950">
-              <p className="flex justify-between">
-                <span className="text-zinc-600 uppercase font-bold">NOMBRE:</span>
-                <span className="font-bold text-right truncate w-2/3 uppercase">
-                  {user?.username}
-                </span>
-              </p>
-              <p className="flex justify-between">
-                <span className="text-zinc-600 uppercase font-bold">CREDITO:</span>
-                <span className="font-bold">LIDER DE CAMPAMENTO</span>
-              </p>
-              <p className="flex justify-between">
-                <span className="text-zinc-600 uppercase font-bold">BASE ASIGNADA:</span>
-                <span className="font-bold text-red-900">REFUGIO CENTRAL</span>
-              </p>
-              <p className="flex justify-between">
-                <span className="text-zinc-600 uppercase font-bold">SEGURIDAD LICENCIA:</span>
-                <span className="font-bold">NIVEL COBRE IV</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-8 border-t border-black/10 pt-4 flex items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-800 shrink-0" />
-            <p className="text-[10px] font-mono text-zinc-700 uppercase leading-3.5">
-              EL COMANDANTE ASUME RESPONSABILIDAD PENAL ABSOLUTA POR LAS BAJAS COMPROBADAS EN LA
-              ZONA MUERTA EXTERIOR.
-            </p>
-          </div>
-        </div>
-
-        {/* COL 2: SURVIVAL STATS GRID */}
-        <div
-          id="bunker-audit-card"
-          className="bg-black/30 border border-[#3b4d3e] rounded-lg backdrop-blur-sm shadow-md p-8 flex flex-col justify-between col-span-2"
-        >
-          <div>
-            <div className="flex items-center gap-2 border-b border-[#c27c2f]/20 pb-3 mb-4">
-              <Users className="w-5 h-5 text-amber-500 animate-pulse" />
-              <h3 className="font-typewriter text-sm text-[#fca311] font-bold tracking-widest">
-                INFORMES INTEGRALES DEL REFUGIO ALFA-01
-              </h3>
-            </div>
-
-            {/* Stats list items */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-4">
-              <div className="bg-black/45 p-5 rounded border border-[#3b4d3e]/40 text-center">
-                <span className="text-xs font-mono text-[#ab9e8b] block uppercase mb-1">
-                  POBLACIÓN TOTAL
-                </span>
-                <span className="font-typewriter text-4xl font-bold text-amber-500">
-                  {statistics.total_persons}
-                </span>
-                <span className="text-xs font-mono text-zinc-500 block uppercase mt-2">
-                  SOBREVIVIENTES
-                </span>
-              </div>
-
-              <div className="bg-black/45 p-5 rounded border border-[#3b4d3e]/40 text-center">
-                <span className="text-xs font-mono text-[#ab9e8b] block uppercase mb-1">
-                  MANO DE OBRA
-                </span>
-                <span className="font-typewriter text-4xl font-bold text-emerald-500">
-                  {statistics.active_workers}
-                </span>
-                <span className="text-xs font-mono text-zinc-500 block uppercase mt-2">
-                  OPERARIOS ACTIVOS
-                </span>
-              </div>
-
-              <div className="bg-black/45 p-5 rounded border border-[#3b4d3e]/40 text-center">
-                <span className="text-xs font-mono text-[#ab9e8b] block uppercase mb-1">
-                  EN EXPEDICIÓN
-                </span>
-                <span className="font-typewriter text-4xl font-bold text-blue-400">
-                  {statistics.exploring}
-                </span>
-                <span className="text-xs font-mono text-zinc-500 block uppercase mt-2">
-                  EMBARCADOS
-                </span>
-              </div>
-
-              <div className="bg-black/45 p-5 rounded border border-[#3b4d3e]/40 text-center">
-                <span className="text-xs font-mono text-red-400 block uppercase mb-1">
-                  ENFERMOS / HERIDOS
-                </span>
-                <span className="font-typewriter text-4xl font-bold text-red-500">
-                  {statistics.injured_or_sick}
-                </span>
-                <span className="text-xs font-mono text-zinc-500 block uppercase mt-2">
-                  EN CUIDADOS
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-900 pt-4 mt-4">
-            <div className="flex gap-3 items-center">
-              <TrendingUp className="w-5 h-5 text-amber-500" />
-              <div>
-                <span className="text-[10px] text-zinc-400 font-mono block uppercase">
-                  TASA OCUPACION BUNKER (8 CAMAS)
-                </span>
-                <div className="w-full h-1.5 bg-zinc-800 rounded mt-1 overflow-hidden">
-                  <div
-                    className="bg-yellow-500 h-full"
-                    style={{ width: `${statistics.occupancy_rate}%` }}
-                  />
-                </div>
-                <span className="text-[9px] text-zinc-500 font-mono">
-                  {statistics.occupancy_rate}% CAPACIDAD OCUPADA
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 items-center justify-end">
-              <Award className="w-5 h-5 text-[#3b4d3e]" />
-              <div className="text-right">
-                <span className="text-[10px] text-zinc-400 font-mono block uppercase">
-                  EXPEDICIONES SATISFACTORIAS
-                </span>
-                <span className="font-typewriter text-md font-bold text-white uppercase">
-                  {statistics.explorations_completed} EXITOSAS
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ROSTER PERSONS COMPREHENSIVE CITIZENRY FILE */}
-      <div
-        id="citizens-manifest-section"
-        className="bg-black/30 border border-[#3b4d3e] rounded-lg backdrop-blur-sm shadow-md p-8"
-      >
-        <div className="flex items-center gap-3 border-b border-[#c27c2f]/20 pb-4 mb-6">
-          <CheckCircle className="w-5 h-5 text-amber-500" />
-          <h3 className="font-typewriter text-2xl font-bold tracking-wider text-[#fca311] uppercase">
-            LISTADO OPERACIONAL DE PERSONAL EN BUNKER ALFA
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {residents.map((p) => {
-            const levelStars = Array.from({ length: p.experience_level ?? 0 }, (_, i) => i)
-
-            return (
-              <div
-                key={p.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedPerson(p)}
-                onKeyDown={(e) => e.key === "Enter" && setSelectedPerson(p)}
-                className="bg-black/30 border border-[#3b4d3e]/30 p-6 rounded-lg flex flex-col sm:flex-row gap-5 relative hover:border-[#c27c2f]/50 hover:bg-black/50 transition-all duration-150 cursor-pointer group select-none"
-              >
-                {/* ID Tag top corner */}
-                <div className="absolute top-3 right-3 text-[9px] font-mono text-zinc-500">
-                  ID: #{p.id}
-                </div>
-
-                {/* Left Profile Avatar */}
-                <div className="w-24 h-24 bg-zinc-900 border border-zinc-800 shrink-0 flex items-center justify-center overflow-hidden rounded relative">
-                  {p.photo_url ? (
-                    <img
-                      src={p.photo_url}
-                      alt={p.first_name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover filter contrast-125 saturate-50 group-hover:scale-105 transition-transform duration-200"
-                    />
-                  ) : (
-                    <User className="w-8 h-8 text-zinc-600 animate-pulse" />
-                  )}
-                </div>
-
-                {/* Right Person files details */}
-                <div className="flex-1 space-y-1.5 font-mono text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-typewriter text-sm font-bold text-white uppercase group-hover:text-[#fca311] transition-colors">
-                      {p.first_name} {p.last_name}
-                    </h4>
-                    {getStatusBadge(p.status)}
-                  </div>
-
-                  <p className="text-[10px] text-[#ab9e8b] uppercase pb-1 border-b border-zinc-900/60 leading-3">
-                    PROFESION: <span className="text-white font-bold">{p.profession?.name ?? "Desconocida"}</span>
-                  </p>
-
-                  {/* MINI BADGES - GAMIFICACION */}
-                  <div className="flex flex-wrap gap-1 py-1">
-                    {p.achievements && p.achievements.length > 0 ? (
-                      p.achievements.map((ach) => <Badge key={ach} code={ach} showText={false} />)
-                    ) : (
-                      <span className="text-[9px] text-zinc-600 font-bold uppercase italic tracking-wider">
-                        - SIN LOGROS REGISTRADOS -
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center text-[11px] pt-1 border-t border-zinc-900/30">
-                    <div className="flex gap-1 items-center">
-                      <span className="text-zinc-500">RANGO:</span>
-                      <div className="flex text-amber-500 shrink-0">
-                        {levelStars.map((s) => (
-                          <Star key={s} className="w-3 h-3 fill-current shrink-0" />
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500">EXPEDICIONES RESISTIDOS:</span>
-                      <span className="text-white font-bold ml-1">{p.expeditionsSurvived}</span>
-                    </div>
-                  </div>
-
-                  {p.previous_skills && (
-                    <div className="bg-zinc-900/50 p-1.5 rounded text-[10.5px] text-[#ab9e8b] font-mono leading-3.5 italic border border-zinc-900 truncate max-w-[280px]">
-                      * Notas de reclutamiento: &quot;{p.previous_skills}&quot;
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* DOSSIER MODAL - GAMIFICACION */}
-      <AnimatePresence>
-        {selectedPerson && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Dark glass backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedPerson(null)}
-              className="absolute inset-0 bg-black/85 backdrop-blur-md"
+          <div className="absolute inset-0 bg-black/80" />
+          <motion.div
+            initial={{ scale: 0.5, rotate: -10, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            exit={{ scale: 0.6, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              zIndex: 1,
+              background: PAPER,
+              border: `3px solid ${INK}`,
+              boxShadow: SHADOW_L,
+              padding: "36px 32px",
+              maxWidth: 360,
+              width: "100%",
+              textAlign: "center",
+              color: INK,
+            }}
+          >
+            {/* Tape strip top */}
+            <div
+              style={{
+                position: "absolute",
+                top: -10,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "#ab9e8b",
+                width: 80,
+                height: 20,
+                border: `1px dashed ${INK}`,
+                opacity: 0.85,
+              }}
             />
 
-            {/* Modal Body Card */}
-            <motion.div
-              id="person-modal-content"
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              className="relative max-w-xl w-full bg-[#161513] border-2 border-[#c27c2f] rounded shadow-[8px_8px_0px_#000000] p-6 text-left text-zinc-100 overflow-y-auto max-h-[90vh] z-20"
+            <button
+              onClick={onClose}
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                background: PAPER_D,
+                border: `1px solid ${INK}`,
+                cursor: "pointer",
+                padding: "2px 6px",
+                fontFamily: "monospace",
+                fontWeight: 900,
+                fontSize: "0.9rem",
+              }}
             >
-              {/* Retro top accent bar */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#c27c2f] via-zinc-900 to-[#c27c2f] animate-pulse" />
+              ✕
+            </button>
 
-              {/* Close Button */}
-              <button
-                onClick={() => setSelectedPerson(null)}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white hover:bg-zinc-900/60 p-1.5 border border-zinc-700 rounded transition-all duration-150 cursor-pointer"
-                title="Cerrar Expediente"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div
+              style={{
+                fontSize: "3.5rem",
+                lineHeight: 1,
+                marginBottom: 14,
+                filter: trophy.unlocked ? "none" : "grayscale(1) opacity(0.35)",
+              }}
+            >
+              {trophy.icon}
+            </div>
 
-              {/* Stamp Tab */}
-              <div className="vintage-tape mb-6 mt-2">
-                EXPEDIENTE MILITAR CLASIFICADO: #{selectedPerson.id}
-              </div>
+            <div
+              style={{
+                fontFamily: "monospace",
+                fontSize: "0.55rem",
+                color: PAPER_S,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}
+            >
+              {RARITY_LABEL[trophy.rarity]} · {trophy.unlocked ? "✓ DESBLOQUEADO" : "✗ BLOQUEADO"}
+            </div>
 
-              {/* Modal Grid: AVATAR + STATS */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pb-5 border-b border-[#3b4d3e]/40">
-                {/* Avatar */}
-                <div className="sm:col-span-1 flex flex-col items-center">
-                  <div className="w-32 h-32 bg-zinc-950 border-2 border-zinc-800 rounded overflow-hidden relative shadow-[4px_4px_0px_rgba(0,0,0,0.7)]">
-                    {selectedPerson.photo_url ? (
-                      <img
-                        src={selectedPerson.photo_url}
-                        alt={selectedPerson.first_name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover filter contrast-125 saturate-50"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-zinc-950">
-                        <User className="w-12 h-12 text-zinc-600 animate-pulse" />
-                      </div>
-                    )}
-                    <div className="absolute bottom-1 right-1 bg-red-950/80 px-1 py-0.5 rounded text-[8px] text-red-500 font-bold border border-red-800 tracking-widest font-mono">
-                      RAD-BIO
-                    </div>
-                  </div>
-                  <div className="mt-4 w-full text-center">
-                    {getStatusBadge(selectedPerson.status)}
-                  </div>
-                </div>
+            <div
+              style={{
+                fontFamily: "'Special Elite', monospace",
+                fontSize: "1.1rem",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                letterSpacing: 2,
+                marginBottom: 12,
+                borderBottom: `1px dashed ${PAPER_S}`,
+                paddingBottom: 10,
+              }}
+            >
+              {trophy.name}
+            </div>
 
-                {/* Profile Details */}
-                <div className="sm:col-span-2 space-y-4">
-                  <div>
-                    <span className="text-[9px] text-zinc-500 font-bold uppercase block tracking-wider">
-                      [SUJETO ARCHIVADO]
-                    </span>
-                    <h3 className="font-typewriter text-2xl font-bold text-white uppercase tracking-wider leading-none mt-1">
-                      {selectedPerson.first_name} {selectedPerson.last_name}
-                    </h3>
-                  </div>
+            <div
+              style={{
+                fontFamily: "monospace",
+                fontSize: "0.72rem",
+                color: PAPER_S,
+                lineHeight: 1.6,
+                marginBottom: 14,
+              }}
+            >
+              {trophy.description}
+            </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-[11px] bg-black/60 p-3 rounded border border-[#3b4d3e]/30 font-mono">
-                    <div>
-                      <span className="text-zinc-500 block text-[9.5px] font-bold uppercase">
-                        PROFESION
-                      </span>
-                      <span className="text-white font-bold block truncate mt-0.5">
-                        {selectedPerson.profession?.name ?? "Desconocida"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block text-[9.5px] font-bold uppercase">
-                        VIAJES SUPERADOS
-                      </span>
-                      <span className="text-emerald-400 font-bold block mt-0.5">
-                        {selectedPerson.expeditionsSurvived} EXITOSAS
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block text-[9.5px] font-bold uppercase">
-                        PUNTOS DE COMBATE
-                      </span>
-                      <span className="text-[#fca311] font-bold block mt-0.5">
-                        {selectedPerson.experience_points} EXP PTS
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block text-[9.5px] font-bold uppercase">
-                        LOGISTICA / RANGO
-                      </span>
-                      <div className="flex text-amber-500 mt-0.5">
-                        {Array.from({ length: selectedPerson.experience_level ?? 0 }).map((_, idx) => (
-                          <Star key={idx} className="w-3.5 h-3.5 fill-current shrink-0" />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Stars */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 14 }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${i < trophy.rarity ? "fill-current" : ""}`}
+                  style={{ color: i < trophy.rarity ? PAPER_S : "#c5bfb4" }}
+                />
+              ))}
+            </div>
 
-              {/* Psych Notes */}
-              <div className="py-4 space-y-1.5">
-                <h4 className="text-[10px] text-[#fca311] tracking-widest font-bold uppercase flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-[#c27c2f]" /> NOTAS PSICOLOGICAS Y DE
-                  CAMPAMENTO:
-                </h4>
-                <p className="bg-neutral-950/60 p-3 rounded text-[11.5px] leading-4 text-zinc-300 border border-zinc-900 italic font-mono">
-                  &quot;
-                  {selectedPerson.previous_skills ||
-                    "No existen antecedentes psiquiatricos reportados para este sobreviviente en las terminales."}
-                  &quot;
-                </p>
-              </div>
-
-              {/* LOGROS CLASIFICADOS - GAMIFICACION */}
-              <div className="pt-2 pb-1 space-y-2.5">
-                <h4 className="text-[10px] text-[#ab9e8b] tracking-widest font-bold uppercase flex items-center gap-1.5 border-t border-zinc-900 pt-4">
-                  <Award className="w-4 h-4 text-[#fca311]" /> LOGROS CLASIFICADOS:
-                </h4>
-
-                {selectedPerson.achievements && selectedPerson.achievements.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2">
-                    {selectedPerson.achievements.map((achCode) => (
-                      <div
-                        key={achCode}
-                        className="flex items-start gap-3 bg-black/40 p-2.5 rounded border border-[#3b4d3e]/20"
-                      >
-                        <div className="shrink-0 pt-0.5">
-                          <Badge code={achCode} showText={false} />
-                        </div>
-                        <div className="text-[11px] space-y-0.5 font-mono">
-                          <p className="font-bold text-[#fafafa] uppercase tracking-wider text-[11px]">
-                            {ACHIEVEMENTS_DICT[achCode]?.name || achCode}
-                          </p>
-                          <p className="text-zinc-400 text-[10px] leading-3.5 italic">
-                            {ACHIEVEMENTS_DICT[achCode]?.description ||
-                              "Sin descripcion disponible para esta medalla de servicio militar."}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-4 text-center bg-zinc-900/20 rounded border border-dashed border-zinc-800/40 opacity-55">
-                    <span className="text-[11px] text-zinc-500 font-mono font-bold uppercase tracking-wider">
-                      - SIN LOGROS REGISTRADOS -
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Close footer */}
-              <div className="mt-5 pt-3.5 border-t border-zinc-900 flex justify-end">
-                <button
-                  onClick={() => setSelectedPerson(null)}
-                  className="cursor-pointer px-4 py-1.5 text-xs text-black font-bold uppercase tracking-widest bg-[#c27c2f] border border-amber-900 hover:bg-amber-500 transition-colors rounded"
+            {/* Progress */}
+            {!trophy.unlocked && trophy.progress !== undefined && (
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontFamily: "monospace",
+                    fontSize: "0.6rem",
+                    color: PAPER_S,
+                    textTransform: "uppercase",
+                    marginBottom: 5,
+                  }}
                 >
-                  Cerrar Expediente
-                </button>
+                  <span>PROGRESO</span>
+                  <span>{trophy.progressLabel}</span>
+                </div>
+                <div
+                  style={{
+                    height: 6,
+                    background: PAPER_D,
+                    border: `1px solid ${INK}`,
+                    overflow: "hidden",
+                  }}
+                >
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${trophy.progress}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    style={{ height: "100%", background: PAPER_S }}
+                  />
+                </div>
               </div>
-            </motion.div>
+            )}
+
+            <button
+              onClick={onClose}
+              style={{
+                marginTop: 20,
+                background: INK,
+                color: PAPER,
+                border: `2px solid ${INK}`,
+                fontFamily: "'Special Elite', monospace",
+                fontWeight: 900,
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: 2,
+                padding: "8px 24px",
+                cursor: "pointer",
+                boxShadow: "2px 2px 0 #444",
+              }}
+            >
+              CERRAR
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+export default function ProfileView({ user, statistics }: ProfileViewProps) {
+  const [selectedTrophy, setSelectedTrophy] = useState<TrophyDef | null>(null)
+
+  const rank = getRank(statistics.survival_score)
+  const nextRank = getNextRank(statistics.survival_score)
+  const rankProgress = nextRank
+    ? Math.min(
+        100,
+        Math.round(((statistics.survival_score - rank.min) / (nextRank.min - rank.min)) * 100),
+      )
+    : 100
+
+  const trophies = buildTrophies(statistics)
+  const unlockedCount = trophies.filter((t) => t.unlocked).length
+
+  const prefix = (user?.username ?? "LDR").slice(0, 3).toUpperCase()
+  const suffix = String(user?.id ?? "0000")
+    .slice(-4)
+    .padStart(4, "0")
+  const idCode = `CLR-${prefix}-${suffix}`
+
+  return (
+    <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* ── HEADER ── */}
+      <div
+        style={{
+          borderBottom: `4px solid ${INK}`,
+          paddingBottom: 18,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              fontFamily: "'Special Elite', monospace",
+              fontSize: "1.5rem",
+              fontWeight: 900,
+              color: PAPER,
+              textTransform: "uppercase",
+              letterSpacing: 3,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              margin: 0,
+            }}
+          >
+            <FileText className="w-7 h-7 shrink-0" />
+            EXPEDIENTE DEL COMANDANTE
+          </h2>
+          <p
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.7rem",
+              color: PAPER_D,
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              marginTop: 4,
+            }}
+          >
+            SISTEMA CENTRAL · REGISTRO CLASIFICADO
+          </p>
+        </div>
+        {/* Tape label */}
+        <div
+          style={{
+            background: "#ab9e8b",
+            border: `2px dashed ${INK}`,
+            fontFamily: "'Special Elite', monospace",
+            fontWeight: 900,
+            fontSize: "0.75rem",
+            textTransform: "uppercase",
+            padding: "4px 16px",
+            transform: "rotate(-1deg)",
+            boxShadow: "2px 2px 0 rgba(0,0,0,0.4)",
+            color: INK,
+            letterSpacing: 2,
+          }}
+        >
+          CONFIDENCIAL
+        </div>
+      </div>
+
+      {/* ── ID CARD ── */}
+      <motion.div
+        initial={{ y: -16, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 130 }}
+        style={{
+          ...paperCard,
+          display: "grid",
+          gridTemplateColumns: "180px 1fr",
+          overflow: "hidden",
+        }}
+      >
+        {/* Left column */}
+        <div
+          style={{
+            background: PAPER_D,
+            borderRight: `2px solid ${INK}`,
+            padding: "24px 16px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          {/* Avatar */}
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              background: PAPER_S,
+              border: `2px solid ${INK}`,
+              boxShadow: "2px 2px 0 #000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Special Elite', monospace",
+                fontSize: "2.2rem",
+                fontWeight: 900,
+                color: INK,
+              }}
+            >
+              {(user?.username ?? "L")[0].toUpperCase()}
+            </span>
           </div>
-        )}
-      </AnimatePresence>
+
+          {/* ID code */}
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.55rem",
+              color: PAPER_S,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              border: `1px solid ${PAPER_S}`,
+              padding: "2px 8px",
+            }}
+          >
+            {idCode}
+          </div>
+
+          {/* Rank */}
+          <div
+            style={{
+              background: INK,
+              color: PAPER,
+              fontFamily: "monospace",
+              fontSize: "0.55rem",
+              fontWeight: 900,
+              padding: "4px 10px",
+              textTransform: "uppercase",
+              letterSpacing: 2,
+              textAlign: "center",
+            }}
+          >
+            {rank.label}
+          </div>
+
+          {/* Trophy pill */}
+          <div
+            style={{
+              background: PAPER,
+              border: `1px solid ${INK}`,
+              fontFamily: "monospace",
+              fontSize: "0.6rem",
+              fontWeight: 900,
+              color: INK,
+              padding: "3px 10px",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <Trophy className="w-3 h-3" />
+            {unlockedCount}/{trophies.length}
+          </div>
+
+          {/* Stars */}
+          <div style={{ display: "flex", gap: 3 }}>
+            {Array.from({ length: RANK_TIERS.indexOf(rank) + 1 }).map((_, i) => (
+              <motion.span
+                key={i}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3 + i * 0.08, type: "spring", stiffness: 200 }}
+                style={{ color: INK, fontSize: "1rem" }}
+              >
+                ★
+              </motion.span>
+            ))}
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 0 }}>
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.55rem",
+              color: PAPER_S,
+              letterSpacing: 3,
+              textTransform: "uppercase",
+              marginBottom: 12,
+              borderBottom: `1px dashed ${PAPER_S}`,
+              paddingBottom: 8,
+            }}
+          >
+            [ DOCUMENTO CLASIFICADO — NIVEL ALFA ]
+          </div>
+
+          {[
+            { label: "IDENTIFICADOR", value: (user?.username ?? "N/D").toUpperCase() },
+            { label: "ROL DEL SISTEMA", value: "LÍDER DE CAMPAMENTO" },
+            { label: "CAMPAMENTO", value: `#${user?.camp_id ?? "?"}` },
+            { label: "PUNTOS SUPERVIVENCIA", value: `${statistics.survival_score} PTS` },
+            { label: "POBLACIÓN", value: `${statistics.total_persons} PERSONAS` },
+            { label: "TRABAJADORES ACTIVOS", value: `${statistics.active_workers}` },
+            { label: "EXPEDICIONES", value: `${statistics.explorations_completed} COMPLETADAS` },
+          ].map((row) => (
+            <div
+              key={row.label}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "7px 0",
+                borderBottom: `1px dashed ${PAPER_S}40`,
+                fontFamily: "monospace",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.62rem",
+                  color: PAPER_S,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                {row.label}
+              </span>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 900,
+                  color: INK,
+                  textTransform: "uppercase",
+                }}
+              >
+                {row.value}
+              </span>
+            </div>
+          ))}
+
+          {/* XP bar */}
+          <div style={{ marginTop: 14 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontFamily: "monospace",
+                fontSize: "0.58rem",
+                color: PAPER_S,
+                textTransform: "uppercase",
+                marginBottom: 5,
+              }}
+            >
+              <span style={{ fontWeight: 900 }}>{rank.label}</span>
+              <span>
+                {nextRank
+                  ? `→ ${nextRank.label} (${statistics.survival_score}/${nextRank.min})`
+                  : "RANGO MÁXIMO"}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                background: PAPER_D,
+                border: `1px solid ${INK}`,
+                overflow: "hidden",
+              }}
+            >
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${rankProgress}%` }}
+                transition={{ duration: 1.1, ease: "easeOut", delay: 0.2 }}
+                style={{ height: "100%", background: INK }}
+              />
+            </div>
+            <div
+              style={{ fontFamily: "monospace", fontSize: "0.55rem", color: PAPER_S, marginTop: 4 }}
+            >
+              {rankProgress}% AL SIGUIENTE RANGO
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── STATS BAR ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+        {[
+          { label: "POBLACIÓN", value: statistics.total_persons },
+          { label: "ACTIVOS", value: statistics.active_workers },
+          { label: "EN CAMPO", value: statistics.exploring },
+          { label: "BAJAS", value: statistics.injured_or_sick },
+        ].map((s) => (
+          <div key={s.label} style={{ ...paperCard, padding: "16px 12px", textAlign: "center" }}>
+            <div
+              style={{
+                fontFamily: "monospace",
+                fontSize: "0.55rem",
+                color: PAPER_S,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 6,
+              }}
+            >
+              {s.label}
+            </div>
+            <div
+              style={{
+                fontFamily: "'Special Elite', monospace",
+                fontSize: "2.4rem",
+                fontWeight: 900,
+                color: INK,
+                lineHeight: 1,
+              }}
+            >
+              {s.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── TROPHY GRID ── */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 110, delay: 0.15 }}
+        style={{ ...paperCard }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            background: INK,
+            color: PAPER,
+            padding: "12px 20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h3
+            style={{
+              fontFamily: "'Special Elite', monospace",
+              fontSize: "1rem",
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: 3,
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Award className="w-5 h-5" />
+            SALA DE TROFEOS
+          </h3>
+          <span
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.65rem",
+              fontWeight: 900,
+              letterSpacing: 1,
+            }}
+          >
+            {unlockedCount}/{trophies.length} OBTENIDOS
+          </span>
+        </div>
+
+        {/* Grid */}
+        <div
+          style={{
+            padding: 20,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+            gap: 14,
+          }}
+        >
+          {trophies.map((trophy, i) => (
+            <motion.div
+              key={trophy.id}
+              initial={{ scale: 0, opacity: 0, rotate: -8 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ delay: i * 0.04, type: "spring", stiffness: 200 }}
+              whileHover={{ scale: 1.06, rotate: -2, zIndex: 10 }}
+              onClick={() => setSelectedTrophy(trophy)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setSelectedTrophy(trophy)}
+              style={{
+                background: trophy.unlocked ? PAPER_D : PAPER_S,
+                border: `2px solid ${INK}`,
+                boxShadow: trophy.unlocked ? SHADOW : "2px 2px 0 #000",
+                padding: "16px 10px",
+                textAlign: "center",
+                cursor: "pointer",
+                color: INK,
+                position: "relative",
+                opacity: trophy.unlocked ? 1 : 0.55,
+                filter: trophy.unlocked ? "none" : "grayscale(0.5)",
+              }}
+            >
+              {/* Rarity corner tape */}
+              {trophy.unlocked && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: -1,
+                    left: -1,
+                    background: INK,
+                    fontFamily: "monospace",
+                    fontSize: "0.42rem",
+                    fontWeight: 900,
+                    color: PAPER,
+                    padding: "2px 5px",
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {RARITY_LABEL[trophy.rarity][0]}
+                </div>
+              )}
+
+              <div style={{ fontSize: "2rem", lineHeight: 1, marginBottom: 8 }}>{trophy.icon}</div>
+
+              <div
+                style={{
+                  fontFamily: "monospace",
+                  fontWeight: 900,
+                  fontSize: "0.58rem",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  lineHeight: 1.3,
+                  marginBottom: 6,
+                }}
+              >
+                {trophy.name}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "center", gap: 2, marginBottom: 6 }}>
+                {Array.from({ length: 5 }).map((_, si) => (
+                  <span
+                    key={si}
+                    style={{ color: si < trophy.rarity ? INK : PAPER, fontSize: "0.6rem" }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+
+              {!trophy.unlocked && trophy.progress !== undefined && (
+                <div
+                  style={{
+                    height: 3,
+                    background: PAPER_S,
+                    border: `1px solid ${INK}`,
+                    overflow: "hidden",
+                    marginTop: 4,
+                  }}
+                >
+                  <div style={{ height: "100%", width: `${trophy.progress}%`, background: INK }} />
+                </div>
+              )}
+
+              {trophy.unlocked && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: INK,
+                  }}
+                />
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── NOTES ── */}
+      <motion.div
+        initial={{ y: 16, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 110, delay: 0.28 }}
+        style={{ ...paperCard, padding: "20px 24px" }}
+      >
+        <h4
+          style={{
+            fontFamily: "monospace",
+            fontSize: "0.65rem",
+            color: INK,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+            marginBottom: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 900,
+          }}
+        >
+          <Shield className="w-4 h-4" /> NOTAS DE MANDO
+        </h4>
+        <p
+          style={{
+            fontFamily: "monospace",
+            fontSize: "0.75rem",
+            color: PAPER_S,
+            lineHeight: 1.7,
+            fontStyle: "italic",
+            borderLeft: `3px solid ${INK}`,
+            paddingLeft: 14,
+            margin: 0,
+          }}
+        >
+          &quot;La supervivencia del campamento depende de la disciplina, la cooperación y la
+          gestión de recursos. Como líder, cada decisión es responsabilidad tuya. Mantén la cadena
+          de mando activa.&quot;
+        </p>
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: "monospace",
+            fontSize: "0.55rem",
+            color: PAPER_S,
+            textTransform: "uppercase",
+            letterSpacing: 2,
+          }}
+        >
+          — PROTOCOLO ALFA · NIVEL DE ACCESO: COMANDANTE
+        </div>
+      </motion.div>
+
+      <TrophyModal trophy={selectedTrophy} onClose={() => setSelectedTrophy(null)} />
     </div>
   )
 }

@@ -1,8 +1,4 @@
-// eslint-disable-next-line react-refresh/only-export-components
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+/* eslint-disable react-refresh/only-export-components */
 
 export interface AchievementDetails {
   name: string
@@ -13,7 +9,6 @@ export interface AchievementDetails {
   textColor: string
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const ACHIEVEMENTS_DICT: Record<string, AchievementDetails> = {
   VETERANO_PARAMO: {
     name: "Veterano del Paramo",

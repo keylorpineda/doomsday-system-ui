@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios"
 
-import { useTokenStore } from "@/store/useAuthStore"
+import { useTokenStore, useAuthStore } from "@/store/useAuthStore"
 
 // Creamos la instancia real apuntando a la URL del backend
 export const api = axios.create({
@@ -46,15 +45,19 @@ api.interceptors.response.use(
 
     // 2. Mapear Inventario (/resources/inventory)
     if (url.includes("/resources/inventory")) {
-      const mapInventoryItem = (item: any) => ({
-        id: item.resource?.id?.toString() || `${item.resource_id}`,
-        name: item.resource?.name || "Recurso",
-        category: item.resource?.category || "Materials",
-        current_stock: Number(item.current_quantity || 0),
-        minimum_stock_required: Number(item.minimum_stock_required || 0),
-        is_below_minimum: item.alert_active || false,
-        unit: item.resource?.unit || "Unidades",
-      })
+      const mapInventoryItem = (item: any) => {
+        const rid = item.resource?.id ?? item.resource_id
+        return {
+          id: String(rid ?? ""),
+          resource_id: Number(rid ?? 0),
+          name: item.resource?.name || "Recurso",
+          category: item.resource?.category || "Materials",
+          current_stock: Number(item.current_quantity || 0),
+          minimum_stock_required: Number(item.minimum_stock_required || 0),
+          is_below_minimum: item.alert_active || false,
+          unit: item.resource?.unit || "Unidades",
+        }
+      }
 
       if (Array.isArray(response.data)) {
         response.data = response.data.map(mapInventoryItem)
@@ -86,10 +89,28 @@ api.interceptors.response.use(
 
     return response
   },
-  (error) => {
-    if (error.response?.status === 401) {
-      console.warn("🔴 401 No autorizado, posible expiración de token")
-      // No redirigimos aquí forzosamente para no romper componentes, el hook global se encargará
+  async (error) => {
+    const originalRequest = error.config
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      try {
+        const { data } = await axios.post(
+          `${import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1"}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        )
+        useTokenStore.getState().setToken(data.access_token)
+        originalRequest.headers.Authorization = `Bearer ${data.access_token}`
+        return api(originalRequest)
+      } catch {
+        useTokenStore.getState().setToken(null)
+        useAuthStore.getState().logout()
+        const PUBLIC_PATHS = ["/login", "/admissions", "/register"]
+        const isPublicPage = PUBLIC_PATHS.some((p) => window.location.pathname.startsWith(p))
+        if (!isPublicPage) {
+          useAuthStore.getState().setSessionExpired(true)
+        }
+      }
     }
     return Promise.reject(error)
   },

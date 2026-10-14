@@ -17,9 +17,9 @@ import { useSceneReactiveData } from "../hooks/useSceneReactiveData"
 import { useThreeScene } from "../hooks/useThreeScene"
 import { useTransferCinematic } from "../hooks/useTransferCinematic"
 import { useWorkerSubType } from "../hooks/useWorkerSubType"
+import { buildCampScene } from "../services/camp"
 import { precompileScene } from "../services/precompileScene"
 import { createProfileMarker } from "../services/profileMarker"
-import { buildCampScene } from "../services/sceneBuilder"
 import { positionTooltip, updateSceneHud } from "../services/sceneOverlayDom"
 
 import type { ProfileMarker } from "../services/profileMarker"
@@ -117,8 +117,16 @@ export default function CampScene3D({
       precompileScene(scene, camera, renderer)
 
       if (import.meta.env.DEV) {
-        // Atajo de depuración desde la consola del navegador.
-        ;(window as unknown as Record<string, unknown>).__playTransfer = cinematic.start
+        // Atajos de depuración desde la consola del navegador (sólo en desarrollo).
+        const debug = window as unknown as Record<string, unknown>
+        debug.__playTransfer = cinematic.start
+        debug.__camp3d = {
+          scene,
+          camera,
+          renderer,
+          handles,
+          camState: contextRef.current?.camState,
+        }
       }
 
       onReady?.()

@@ -1,6 +1,6 @@
 import * as THREE from "three"
 
-import { SCENE_SCALE } from "./sceneBuilder"
+import { SCENE_SCALE } from "./camp"
 
 import type { CameraState } from "../hooks/useThreeScene"
 import type { BuildingConfig } from "../types/scene.types"

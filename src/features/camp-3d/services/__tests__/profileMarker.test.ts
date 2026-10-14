@@ -1,8 +1,8 @@
 import * as THREE from "three"
 import { describe, expect, it } from "vitest"
 
+import { SCENE_SCALE } from "../camp"
 import { createProfileMarker } from "../profileMarker"
-import { SCENE_SCALE } from "../sceneBuilder"
 
 const pointLights = (scene: THREE.Scene) => {
   const lights: THREE.PointLight[] = []

@@ -1,3 +1,5 @@
+import { PROFILE_SPOTS } from "../services/camp/layout"
+
 import type { BuildingConfig, Camp3DRole } from "../types/scene.types"
 
 /**
@@ -6,7 +8,7 @@ import type { BuildingConfig, Camp3DRole } from "../types/scene.types"
  * muestra en el tooltip y en el aviso de acceso denegado.
  */
 
-/** Posición (coordenadas raw, sin SCENE_SCALE) y ruta de un marcador de perfil. */
+/** Posición (coordenadas mundo, del plano maestro) y ruta de un marcador de perfil. */
 export interface ProfileMarkerConfig {
   pos: [number, number, number]
   route: string
@@ -25,11 +27,11 @@ export const normalizeRole = (role?: string): Camp3DRole => {
  * Una luz azulada pulsa sobre esa zona; el click navega al perfil del usuario.
  */
 export const PROFILE_MARKERS: Record<Camp3DRole, ProfileMarkerConfig> = {
-  admin: { pos: [0, 3.3, -6.6], route: "/admin/profile" }, // ventana 2do piso CG
-  camp_leader: { pos: [-4.4, 1.8, -10], route: "/campleader/dashboard" }, // ala lateral CG
-  resource_manager: { pos: [-8.3, 2.2, 4], route: "/camp-manager" }, // oficina del almacén
-  travel_manager: { pos: [11.0, 1.5, 6.2], route: "/travel-manager/dashboard" }, // fondo del garaje (lejos de la entrada)
-  worker: { pos: [12.8, 1.5, -3.1], route: "/worker/dashboard" }, // default: apartamentos
+  admin: { pos: PROFILE_SPOTS.admin, route: "/admin/profile" }, // ventana del 2º piso del Comando
+  camp_leader: { pos: PROFILE_SPOTS.camp_leader, route: "/campleader/dashboard" }, // ala este del Comando
+  resource_manager: { pos: PROFILE_SPOTS.resource_manager, route: "/camp-manager" }, // muelle del almacén
+  travel_manager: { pos: PROFILE_SPOTS.travel_manager, route: "/travel-manager/dashboard" }, // fondo del taller
+  worker: { pos: PROFILE_SPOTS.worker, route: "/worker/dashboard" }, // entrada de los apartamentos
 }
 
 /**
@@ -39,9 +41,9 @@ export const PROFILE_MARKERS: Record<Camp3DRole, ProfileMarkerConfig> = {
  *  - otro → Apartamentos (su unidad — default)
  */
 export const WORKER_SUB_MARKERS: Record<string, ProfileMarkerConfig> = {
-  soldier: { pos: [12, 1.5, 1.5], route: "/worker/profile" }, // armería locker
-  explorer: { pos: [-17, 6.2, 11], route: "/worker/profile" }, // torre plataforma
-  other: { pos: [12.8, 1.5, -3.1], route: "/worker/dashboard" }, // apartamentos
+  soldier: { pos: PROFILE_SPOTS.soldier, route: "/worker/profile" }, // armería
+  explorer: { pos: PROFILE_SPOTS.explorer, route: "/worker/profile" }, // plataforma de la torre
+  other: { pos: PROFILE_SPOTS.worker, route: "/worker/dashboard" }, // apartamentos
 }
 
 /** Resuelve la posición del perfil para workers según su profesión. */

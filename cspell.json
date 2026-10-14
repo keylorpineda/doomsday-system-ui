@@ -204,7 +204,10 @@
     "síncrona",
     "clickeable",
     "lerp",
-    "guionados"
+    "guionados",
+    "pseudoaleatorio",
+    "determinístico",
+    "clickeables"
   ],
   "ignorePaths": [
     "node_modules",

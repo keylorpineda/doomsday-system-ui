@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import * as THREE from "three"
 
 import { useLatestRef } from "./useLatestRef"
+import { CAMERA } from "../services/camp/layout"
 
 import type { RefObject } from "react"
 
@@ -34,7 +35,7 @@ interface UseThreeSceneOptions {
   paused?: boolean
 }
 
-const SPEED = 0.18
+const SPEED = 0.35 // el campamento es grande: desplazamiento WASD más ágil
 const MOVE_KEYS = new Set([
   "w",
   "W",
@@ -102,7 +103,7 @@ export function useThreeScene(
     // on a scene with fog this dense.
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 0.88
+    renderer.toneMappingExposure = 1.05
 
     // ---- SCENE ----
     const scene = new THREE.Scene()
@@ -110,16 +111,17 @@ export function useThreeScene(
     scene.fog = new THREE.Fog(0x04080a, 28, 55)
 
     // ---- CAMERA ----
-    const camera = new THREE.PerspectiveCamera(58, initialW / initialH, 0.1, 150)
+    const camera = new THREE.PerspectiveCamera(58, initialW / initialH, 0.1, CAMERA.far)
     camera.position.set(0, 22, 20)
     camera.lookAt(0, 0, 0)
 
     const camState: CameraState = {
-      theta: Math.PI * 0.48,
-      phi: 1.28,
-      radius: 40,
-      target: new THREE.Vector3(0, 0.5, 13),
+      theta: CAMERA.initial.theta,
+      phi: CAMERA.initial.phi,
+      radius: CAMERA.initial.radius,
+      target: new THREE.Vector3(...CAMERA.initial.target),
     }
+    const B = CAMERA.bounds
 
     const ctx: ThreeContext = { scene, camera, renderer, camState }
     contextRef.current = ctx
@@ -146,7 +148,10 @@ export function useThreeScene(
       prevM = { x: e.clientX, y: e.clientY }
     }
     const onWheel = (e: WheelEvent) => {
-      camState.radius = Math.max(8, Math.min(54, camState.radius + e.deltaY * 0.04))
+      camState.radius = Math.max(
+        B.minRadius,
+        Math.min(B.maxRadius, camState.radius + e.deltaY * 0.06),
+      )
       e.preventDefault()
     }
     const onKeyDown = (e: KeyboardEvent) => {
@@ -179,7 +184,10 @@ export function useThreeScene(
       if (e.touches.length === 2 && pinch0) {
         const d = e.touches
         const dist = Math.hypot(d[0].clientX - d[1].clientX, d[0].clientY - d[1].clientY)
-        camState.radius = Math.max(5, Math.min(60, camState.radius * (pinch0 / dist)))
+        camState.radius = Math.max(
+          B.minRadius,
+          Math.min(B.maxRadius, camState.radius * (pinch0 / dist)),
+        )
         pinch0 = dist
       }
       e.preventDefault()
@@ -235,11 +243,11 @@ export function useThreeScene(
       if (keys["a"] || keys["A"] || keys["ArrowLeft"]) camState.target.addScaledVector(rt, -move)
       if (keys["d"] || keys["D"] || keys["ArrowRight"]) camState.target.addScaledVector(rt, move)
       if (keys["q"] || keys["Q"])
-        camState.radius = Math.max(8, camState.radius - 0.25 * (dt / 0.016))
+        camState.radius = Math.max(B.minRadius, camState.radius - 0.4 * (dt / 0.016))
       if (keys["e"] || keys["E"])
-        camState.radius = Math.min(54, camState.radius + 0.25 * (dt / 0.016))
-      camState.target.x = Math.max(-32, Math.min(32, camState.target.x))
-      camState.target.z = Math.max(-24, Math.min(24, camState.target.z))
+        camState.radius = Math.min(B.maxRadius, camState.radius + 0.4 * (dt / 0.016))
+      camState.target.x = Math.max(B.minX, Math.min(B.maxX, camState.target.x))
+      camState.target.z = Math.max(B.minZ, Math.min(B.maxZ, camState.target.z))
 
       camera.position.x =
         camState.target.x + camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta)

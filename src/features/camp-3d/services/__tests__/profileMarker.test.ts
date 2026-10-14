@@ -7,7 +7,7 @@ import { SCENE_SCALE } from "../sceneBuilder"
 const pointLights = (scene: THREE.Scene) => {
   const lights: THREE.PointLight[] = []
   scene.traverse((o) => {
-    if ((o as THREE.PointLight).isPointLight) lights.push(o as THREE.PointLight)
+    if (o instanceof THREE.PointLight) lights.push(o)
   })
   return lights
 }

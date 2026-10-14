@@ -15,7 +15,6 @@ import InactivityGuard from "@/components/ui/InactivityGuard"
 import { useCamp } from "@/features/worker/hooks/useWorkerAPI"
 import { useAlertSocket } from "@/hooks/useAlertSocket"
 import { useAuth } from "@/pages/Admin/context/AuthContext"
-import "./worker.css"
 
 const NAV_ITEMS: RoleNavItem[] = [
   { key: "dashboard", label: "TABLERO", icon: LayoutDashboard },

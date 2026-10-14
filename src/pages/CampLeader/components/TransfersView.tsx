@@ -4,6 +4,7 @@ import { useState } from "react"
 
 import type { Camp, Inventory, ResourceItem, Transfer, TransferStatus } from "../types"
 
+import { Portal } from "@/components/ui/Portal"
 import { TransferRouteMap } from "@/features/map-test/components/TransferRouteMap"
 
 interface TransfersViewProps {
@@ -364,194 +365,196 @@ export default function TransfersView({
       </div>
 
       {/* MODAL: SOLICITAR NUEVA TRANSFERENCIA INTER-CAMPAMENTO */}
-      <AnimatePresence>
-        {isNewModalOpen && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-zinc-950 border-4 border-[#c27c2f] max-w-md w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)] rounded-lg"
-            >
-              <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
-                <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
-                  <Truck className="w-5 h-5 animate-bounce" />
-                  CREAR HOJA DE TRASLADO PENDIENTE
-                </h3>
-                <button
-                  onClick={() => setIsNewModalOpen(false)}
-                  className="text-zinc-400 hover:text-white cursor-pointer font-bold"
-                >
-                  [X]
-                </button>
-              </div>
-
-              {formError && (
-                <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Target Camp Selector */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="tr-camp"
-                    className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+      <Portal>
+        <AnimatePresence>
+          {isNewModalOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-zinc-950 border-4 border-[#c27c2f] max-w-md w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)] rounded-lg max-h-[calc(100dvh-2rem)] overflow-y-auto"
+              >
+                <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
+                  <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
+                    <Truck className="w-5 h-5 animate-bounce" />
+                    CREAR HOJA DE TRASLADO PENDIENTE
+                  </h3>
+                  <button
+                    onClick={() => setIsNewModalOpen(false)}
+                    className="text-zinc-400 hover:text-white cursor-pointer font-bold"
                   >
-                    CAMPAMENTO DE DESTINO
-                  </label>
-                  <select
-                    id="tr-camp"
-                    className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                    value={targetCampId}
-                    onChange={(e) => setTargetCampId(Number(e.target.value))}
-                  >
-                    {camps
-                      .filter((c) => c.id !== myCampId)
-                      .map((c) => (
-                        <option
-                          key={c.id}
-                          value={c.id}
-                          className="bg-zinc-950 text-white font-mono uppercase text-xs"
-                        >
-                          {c.name}
-                        </option>
-                      ))}
-                  </select>
+                    [X]
+                  </button>
                 </div>
 
-                {/* Import Direction or Export Selection */}
-                <div className="flex flex-col gap-1">
-                  <div className="text-[10px] text-[#ab9e8b] uppercase font-bold">
-                    TIPO DE OPERACIÓN SOLICITADA
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setDirection("import")}
-                      className={`p-2 font-mono text-xs uppercase font-bold border rounded transition-colors ${
-                        direction === "import"
-                          ? "bg-amber-500 text-black border-black"
-                          : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-750"
-                      }`}
-                    >
-                      SOLICITAR ENVÍO (IMPORTACIÓN)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDirection("export")}
-                      className={`p-2 font-mono text-xs uppercase font-bold border rounded transition-colors ${
-                        direction === "export"
-                          ? "bg-amber-500 text-black border-black"
-                          : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-750"
-                      }`}
-                    >
-                      REGISTRAR SUMINISTRO (EXPORTACIÓN)
-                    </button>
-                  </div>
-                  <span className="text-[9px] text-[#ab9e8b]/70 block leading-3 mt-1 font-sans">
-                    {direction === "import"
-                      ? "* Solicita que el campamento seleccionado nos envíe un convoy."
-                      : "* Suministramos desde el Refugio Alfa al campamento destino."}
-                  </span>
-                </div>
-
-                {/* Resource Item Selector */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="tr-resource"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      RECURSO
-                    </label>
-                    <select
-                      id="tr-resource"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      value={selectedResourceId}
-                      onChange={(e) => setSelectedResourceId(Number(e.target.value))}
-                    >
-                      {resources.map((res) => (
-                        <option
-                          key={res.id}
-                          value={res.id}
-                          className="bg-zinc-950 text-white font-mono uppercase text-xs"
-                        >
-                          {res.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="tr-qty"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      CANTIDAD DISPUESTA
-                    </label>
-                    <input
-                      id="tr-qty"
-                      type="number"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      min={10}
-                      max={1000}
-                      step={10}
-                      value={requestQty}
-                      onChange={(e) => setRequestQty(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Custom warning description helper if exporting */}
-                {direction === "export" && (
-                  <div className="p-2 bg-yellow-950/25 border border-yellow-500/30 text-[9.5px] text-yellow-400 rounded leading-3.5">
-                    RECUERDE QUE LAS UNIDADES SE DESCONTARÁN DE NUESTRO ALMACÉN AL APROBAR O
-                    DESPACHAR EL EMBARQUE.
+                {formError && (
+                  <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{formError}</span>
                   </div>
                 )}
 
-                {/* Notes */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="tr-notes"
-                    className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                  >
-                    MENSAJE DEL CANAL / NOTAS ADICIONALES
-                  </label>
-                  <textarea
-                    id="tr-notes"
-                    className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
-                    placeholder="MOTIVOS DE SUMINISTRO O DESTRUCCIÓN..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Target Camp Selector */}
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="tr-camp"
+                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                    >
+                      CAMPAMENTO DE DESTINO
+                    </label>
+                    <select
+                      id="tr-camp"
+                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                      value={targetCampId}
+                      onChange={(e) => setTargetCampId(Number(e.target.value))}
+                    >
+                      {camps
+                        .filter((c) => c.id !== myCampId)
+                        .map((c) => (
+                          <option
+                            key={c.id}
+                            value={c.id}
+                            className="bg-zinc-950 text-white font-mono uppercase text-xs"
+                          >
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
-                <div className="border-t border-zinc-900 pt-4 flex gap-4">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-[#c27c2f] hover:bg-[#d68b38] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all cursor-pointer rounded-sm"
-                  >
-                    {isSubmitting ? "REGISTRANDO OPERACIÓN..." : "MEMORIZAR TRASLADO"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsNewModalOpen(false)}
-                    className="bg-[#9a9080] hover:bg-[#ab9e8b] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all cursor-pointer rounded-sm"
-                  >
-                    RETORNAR
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  {/* Import Direction or Export Selection */}
+                  <div className="flex flex-col gap-1">
+                    <div className="text-[10px] text-[#ab9e8b] uppercase font-bold">
+                      TIPO DE OPERACIÓN SOLICITADA
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setDirection("import")}
+                        className={`p-2 font-mono text-xs uppercase font-bold border rounded transition-colors ${
+                          direction === "import"
+                            ? "bg-amber-500 text-black border-black"
+                            : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-750"
+                        }`}
+                      >
+                        SOLICITAR ENVÍO (IMPORTACIÓN)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDirection("export")}
+                        className={`p-2 font-mono text-xs uppercase font-bold border rounded transition-colors ${
+                          direction === "export"
+                            ? "bg-amber-500 text-black border-black"
+                            : "bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-750"
+                        }`}
+                      >
+                        REGISTRAR SUMINISTRO (EXPORTACIÓN)
+                      </button>
+                    </div>
+                    <span className="text-[9px] text-[#ab9e8b]/70 block leading-3 mt-1 font-sans">
+                      {direction === "import"
+                        ? "* Solicita que el campamento seleccionado nos envíe un convoy."
+                        : "* Suministramos desde el Refugio Alfa al campamento destino."}
+                    </span>
+                  </div>
+
+                  {/* Resource Item Selector */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="tr-resource"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        RECURSO
+                      </label>
+                      <select
+                        id="tr-resource"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        value={selectedResourceId}
+                        onChange={(e) => setSelectedResourceId(Number(e.target.value))}
+                      >
+                        {resources.map((res) => (
+                          <option
+                            key={res.id}
+                            value={res.id}
+                            className="bg-zinc-950 text-white font-mono uppercase text-xs"
+                          >
+                            {res.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="tr-qty"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        CANTIDAD DISPUESTA
+                      </label>
+                      <input
+                        id="tr-qty"
+                        type="number"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        min={10}
+                        max={1000}
+                        step={10}
+                        value={requestQty}
+                        onChange={(e) => setRequestQty(Number(e.target.value))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom warning description helper if exporting */}
+                  {direction === "export" && (
+                    <div className="p-2 bg-yellow-950/25 border border-yellow-500/30 text-[9.5px] text-yellow-400 rounded leading-3.5">
+                      RECUERDE QUE LAS UNIDADES SE DESCONTARÁN DE NUESTRO ALMACÉN AL APROBAR O
+                      DESPACHAR EL EMBARQUE.
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="tr-notes"
+                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                    >
+                      MENSAJE DEL CANAL / NOTAS ADICIONALES
+                    </label>
+                    <textarea
+                      id="tr-notes"
+                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
+                      placeholder="MOTIVOS DE SUMINISTRO O DESTRUCCIÓN..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="border-t border-zinc-900 pt-4 flex gap-4">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-[#c27c2f] hover:bg-[#d68b38] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all cursor-pointer rounded-sm"
+                    >
+                      {isSubmitting ? "REGISTRANDO OPERACIÓN..." : "MEMORIZAR TRASLADO"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewModalOpen(false)}
+                      className="bg-[#9a9080] hover:bg-[#ab9e8b] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all cursor-pointer rounded-sm"
+                    >
+                      RETORNAR
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

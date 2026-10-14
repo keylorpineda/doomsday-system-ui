@@ -33,6 +33,7 @@ import type {
 } from "@/types/api.types"
 
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import { Portal } from "@/components/ui/Portal"
 import { getCamps } from "@/features/camps/services/camps.service"
 import { getInventory } from "@/features/inventory/services/inventory.service"
 import { getPersons } from "@/features/persons/services/persons.service"
@@ -640,9 +641,9 @@ export default function TravelTransfers() {
         </div>
 
         {/* ── Main layout ── */}
-        <div className="flex-1 flex gap-4 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 overflow-hidden">
           {/* LEFT: Registro de Traslados */}
-          <div className="w-[290px] flex flex-col gap-3 shrink-0 overflow-hidden bg-[#1c1208] p-4 border-2 border-black shadow-[3px_3px_0px_#000]">
+          <div className="w-full md:w-[290px] max-h-[40%] md:max-h-none flex flex-col gap-3 shrink-0 overflow-hidden bg-[#1c1208] p-4 border-2 border-black shadow-[3px_3px_0px_#000]">
             <div className="tm-folder-header-row mb-1">
               <h4 className="tm-folder-title">REGISTRO DE TRASLADOS</h4>
               <span className="text-[10px] font-mono font-medium text-white/30 uppercase tracking-wider">
@@ -737,7 +738,7 @@ export default function TravelTransfers() {
           </div>
 
           {/* MIDDLE: Visualizador */}
-          <div className="flex-1 flex flex-col bg-[#1c1208] border-2 border-black overflow-hidden shadow-[3px_3px_0px_#000]">
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col bg-[#1c1208] border-2 border-black overflow-hidden shadow-[3px_3px_0px_#000]">
             {selectedTransfer ? (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header visualizador */}
@@ -770,8 +771,8 @@ export default function TravelTransfers() {
                 </div>
 
                 {/* Paper sheet details */}
-                <div className="flex-1 p-5 flex flex-col overflow-hidden items-center justify-center relative bg-black/25">
-                  <div className="tm-paper tm-paper-texture w-full h-full relative overflow-hidden p-8 flex flex-col shadow-2xl justify-between">
+                <div className="flex-1 min-h-0 p-5 flex flex-col overflow-y-auto relative bg-black/25">
+                  <div className="tm-paper tm-paper-texture w-full min-h-full flex-none relative overflow-hidden p-5 sm:p-8 flex flex-col shadow-2xl justify-between">
                     {/* Sello MANIFIESTO */}
                     <div className="absolute top-10 right-10 flex flex-col items-center rotate-12 select-none opacity-15 pointer-events-none z-10">
                       <div className="border-4 border-ink p-1 mb-0.5">
@@ -1105,360 +1106,362 @@ export default function TravelTransfers() {
       </div>
 
       {/* ── Modal: Nuevo Traslado ── */}
-      <AnimatePresence>
-        {isNewModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          >
+      <Portal>
+        <AnimatePresence>
+          {isNewModalOpen && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="tm-paper tm-paper-texture w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative p-0 border-4 border-double border-ink/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
             >
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-8 py-6 border-b-2 border-dashed border-ink/20 bg-black/5">
-                <div className="flex items-center gap-5">
-                  <div className="p-2.5 bg-[#df8120]/10 border border-[#df8120]/30">
-                    <ArrowLeftRight className="h-9 w-9 text-[#df8120]" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-mono font-black tracking-[0.3em] text-[#df8120]/60 uppercase mb-1">
-                      {"// ORDEN LOGÍSTICA"}
-                    </div>
-                    <h3 className="font-typewriter font-black text-ink uppercase text-2xl tracking-widest leading-none">
-                      Nueva Solicitud de Traslado
-                    </h3>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDiscardDraft}
-                  className="p-2 text-ink-soft hover:text-ink hover:bg-ink/10 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Modal body */}
-              <form
-                onSubmit={handleCreateTransfer}
-                className="flex-1 overflow-y-auto custom-scrollbar"
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="tm-paper tm-paper-texture w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden shadow-2xl relative p-0 border-4 border-double border-ink/40"
               >
-                <div className="p-8 space-y-7">
-                  {formError && (
-                    <div className="bg-red-950/40 border-2 border-red-500/50 p-5 font-mono text-sm text-red-300 uppercase flex items-start gap-3 shadow-lg">
-                      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
-                      <span className="leading-relaxed">{formError}</span>
+                {/* Modal header */}
+                <div className="flex items-center justify-between px-8 py-6 border-b-2 border-dashed border-ink/20 bg-black/5">
+                  <div className="flex items-center gap-5">
+                    <div className="p-2.5 bg-[#df8120]/10 border border-[#df8120]/30">
+                      <ArrowLeftRight className="h-9 w-9 text-[#df8120]" />
                     </div>
-                  )}
-
-                  {/* Origin → Destination header */}
-                  <div className="flex items-center gap-3 bg-ink/6 border-2 border-dashed border-ink/25 px-5 py-4">
-                    <Truck className="h-5 w-5 text-[#df8120] shrink-0" />
-                    <span className="text-sm font-mono font-black text-ink-soft uppercase tracking-widest">
-                      Base Origen:
-                    </span>
-                    <span className="text-base font-mono font-black text-ink uppercase px-3 py-0.5 bg-ink/10 border border-ink/20">
-                      {campId}
-                    </span>
-                    <ArrowLeftRight className="h-4 w-4 text-ink/40 mx-1" />
-                    <span className="text-sm font-mono font-black text-ink-soft uppercase tracking-widest">
-                      Destino →
-                    </span>
+                    <div>
+                      <div className="text-[10px] font-mono font-black tracking-[0.3em] text-[#df8120]/60 uppercase mb-1">
+                        {"// ORDEN LOGÍSTICA"}
+                      </div>
+                      <h3 className="font-typewriter font-black text-ink uppercase text-2xl tracking-widest leading-none">
+                        Nueva Solicitud de Traslado
+                      </h3>
+                    </div>
                   </div>
+                  <button
+                    onClick={handleDiscardDraft}
+                    className="p-2 text-ink-soft hover:text-ink hover:bg-ink/10 transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
 
-                  {/* Destination camp */}
-                  <div>
-                    <label
-                      htmlFor="destCampId"
-                      className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
-                    >
-                      Campamento Destino *
-                    </label>
-                    <select
-                      id="destCampId"
-                      value={destCampId}
-                      onChange={(e) => setDestCampId(e.target.value)}
-                      className="vintage-input w-full py-3.5 px-4 text-base"
-                    >
-                      <option value="" disabled>
-                        Seleccione un destino...
-                      </option>
-                      {camps
-                        .filter((c) => String(c.id) !== String(campId))
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                {/* Modal body */}
+                <form
+                  onSubmit={handleCreateTransfer}
+                  className="flex-1 overflow-y-auto custom-scrollbar"
+                >
+                  <div className="p-8 space-y-7">
+                    {formError && (
+                      <div className="bg-red-950/40 border-2 border-red-500/50 p-5 font-mono text-sm text-red-300 uppercase flex items-start gap-3 shadow-lg">
+                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
+                        <span className="leading-relaxed">{formError}</span>
+                      </div>
+                    )}
 
-                  {/* Type + Days */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Origin → Destination header */}
+                    <div className="flex items-center gap-3 bg-ink/6 border-2 border-dashed border-ink/25 px-5 py-4">
+                      <Truck className="h-5 w-5 text-[#df8120] shrink-0" />
+                      <span className="text-sm font-mono font-black text-ink-soft uppercase tracking-widest">
+                        Base Origen:
+                      </span>
+                      <span className="text-base font-mono font-black text-ink uppercase px-3 py-0.5 bg-ink/10 border border-ink/20">
+                        {campId}
+                      </span>
+                      <ArrowLeftRight className="h-4 w-4 text-ink/40 mx-1" />
+                      <span className="text-sm font-mono font-black text-ink-soft uppercase tracking-widest">
+                        Destino →
+                      </span>
+                    </div>
+
+                    {/* Destination camp */}
                     <div>
                       <label
-                        htmlFor="transferType"
+                        htmlFor="destCampId"
                         className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
                       >
-                        Tipo de Traslado *
+                        Campamento Destino *
                       </label>
                       <select
-                        id="transferType"
-                        value={transferType}
-                        onChange={(e) =>
-                          setTransferType(e.target.value as "resources" | "people" | "both")
-                        }
+                        id="destCampId"
+                        value={destCampId}
+                        onChange={(e) => setDestCampId(e.target.value)}
                         className="vintage-input w-full py-3.5 px-4 text-base"
                       >
-                        <option value="resources">RECURSOS</option>
-                        <option value="people">PERSONAS</option>
-                        <option value="both">MIXTO (AMBOS)</option>
+                        <option value="" disabled>
+                          Seleccione un destino...
+                        </option>
+                        {camps
+                          .filter((c) => String(c.id) !== String(campId))
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
+
+                    {/* Type + Days */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label
+                          htmlFor="transferType"
+                          className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
+                        >
+                          Tipo de Traslado *
+                        </label>
+                        <select
+                          id="transferType"
+                          value={transferType}
+                          onChange={(e) =>
+                            setTransferType(e.target.value as "resources" | "people" | "both")
+                          }
+                          className="vintage-input w-full py-3.5 px-4 text-base"
+                        >
+                          <option value="resources">RECURSOS</option>
+                          <option value="people">PERSONAS</option>
+                          <option value="both">MIXTO (AMBOS)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="travelDays"
+                          className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
+                        >
+                          Días de Viaje Estimados
+                        </label>
+                        <input
+                          id="travelDays"
+                          type="number"
+                          min={1}
+                          value={travelDays}
+                          onChange={(e) => setTravelDays(Number(e.target.value))}
+                          className="vintage-input w-full py-3.5 px-4 text-base"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Notes */}
                     <div>
                       <label
-                        htmlFor="travelDays"
+                        htmlFor="notes"
                         className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
                       >
-                        Días de Viaje Estimados
+                        Notas / Motivo del Traslado
                       </label>
-                      <input
-                        id="travelDays"
-                        type="number"
-                        min={1}
-                        value={travelDays}
-                        onChange={(e) => setTravelDays(Number(e.target.value))}
-                        className="vintage-input w-full py-3.5 px-4 text-base"
+                      <textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Razón del traslado, instrucciones especiales para el convoy..."
+                        rows={3}
+                        className="vintage-input w-full resize-none py-3.5 px-4 text-sm leading-relaxed"
                       />
                     </div>
-                  </div>
 
-                  {/* Notes */}
-                  <div>
-                    <label
-                      htmlFor="notes"
-                      className="text-xs font-mono font-black text-ink uppercase tracking-widest block mb-3"
-                    >
-                      Notas / Motivo del Traslado
-                    </label>
-                    <textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Razón del traslado, instrucciones especiales para el convoy..."
-                      rows={3}
-                      className="vintage-input w-full resize-none py-3.5 px-4 text-sm leading-relaxed"
-                    />
-                  </div>
-
-                  {/* Resources section */}
-                  {(transferType === "resources" || transferType === "both") && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-xs font-mono font-black text-ink uppercase tracking-widest flex items-center gap-2">
-                          <Package className="h-4 w-4 text-[#c27c2f]" />
-                          Recursos a Transferir *
-                        </div>
-                        <span className="text-xs font-mono font-black text-[#c27c2f] bg-[#c27c2f]/10 px-3 py-1 border border-[#c27c2f]/30">
-                          {selectedResources.length} SELECCIONADO(S)
-                        </span>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1.5 border-2 border-ink/20 p-3 bg-black/8 rounded-sm">
-                        {inventory.length === 0 ? (
-                          <div className="flex items-center justify-center gap-2 py-8 text-ink-soft/40">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-sm font-mono uppercase">
-                              Cargando inventario...
-                            </span>
+                    {/* Resources section */}
+                    {(transferType === "resources" || transferType === "both") && (
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs font-mono font-black text-ink uppercase tracking-widest flex items-center gap-2">
+                            <Package className="h-4 w-4 text-[#c27c2f]" />
+                            Recursos a Transferir *
                           </div>
-                        ) : (
-                          inventory
-                            .filter((item) => item.current_quantity > 0)
-                            .map((item) => {
-                              const sel = selectedResources.find(
-                                (r) => r.resource_id === item.resource_id,
+                          <span className="text-xs font-mono font-black text-[#c27c2f] bg-[#c27c2f]/10 px-3 py-1 border border-[#c27c2f]/30">
+                            {selectedResources.length} SELECCIONADO(S)
+                          </span>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1.5 border-2 border-ink/20 p-3 bg-black/8 rounded-sm">
+                          {inventory.length === 0 ? (
+                            <div className="flex items-center justify-center gap-2 py-8 text-ink-soft/40">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="text-sm font-mono uppercase">
+                                Cargando inventario...
+                              </span>
+                            </div>
+                          ) : (
+                            inventory
+                              .filter((item) => item.current_quantity > 0)
+                              .map((item) => {
+                                const sel = selectedResources.find(
+                                  (r) => r.resource_id === item.resource_id,
+                                )
+                                const isSelected = !!sel
+                                return (
+                                  <div
+                                    key={item.resource_id}
+                                    className={`flex items-center justify-between p-3 border transition-all ${
+                                      isSelected
+                                        ? "bg-[#c27c2f]/8 border-[#c27c2f]/40"
+                                        : "bg-transparent border-dashed border-ink/15 hover:border-ink/35 hover:bg-ink/4"
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="flex items-center gap-3 cursor-pointer flex-1 bg-transparent border-none text-left p-0 outline-none focus:outline-none"
+                                      onClick={() => handleToggleResource(item.resource_id)}
+                                    >
+                                      <div
+                                        className={`h-5 w-5 border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                          isSelected
+                                            ? "border-[#c27c2f] bg-[#c27c2f]/15"
+                                            : "border-ink/25"
+                                        }`}
+                                      >
+                                        {isSelected && <Check className="h-3 w-3 text-[#c27c2f]" />}
+                                      </div>
+                                      <div className="w-8 h-8 rounded-sm bg-black/10 border border-ink/15 flex items-center justify-center shrink-0">
+                                        {getCategoryIcon(item.resource?.category)}
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-mono font-bold text-ink uppercase truncate">
+                                          {item.resource?.name || "Desconocido"}
+                                        </span>
+                                        <span className="text-xs font-mono text-ink-soft/60 uppercase leading-none mt-0.5">
+                                          {item.resource?.category || "N/A"} · Disponible:{" "}
+                                          <strong>{item.current_quantity}</strong>{" "}
+                                          {item.resource?.unit || "U"}
+                                        </span>
+                                      </div>
+                                    </button>
+                                    {isSelected && (
+                                      <div className="flex items-center gap-2 ml-3 shrink-0">
+                                        <span className="text-[10px] font-mono text-ink-soft uppercase">
+                                          Cant:
+                                        </span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={item.current_quantity}
+                                          value={sel.requested_quantity}
+                                          onClick={(ev) => ev.stopPropagation()}
+                                          onChange={(e) =>
+                                            handleResourceQtyChange(
+                                              item.resource_id,
+                                              Number(e.target.value),
+                                            )
+                                          }
+                                          className="vintage-input w-20 text-sm py-1.5 px-2 text-center"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Persons section */}
+                    {(transferType === "people" || transferType === "both") && (
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs font-mono font-black text-ink uppercase tracking-widest flex items-center gap-2">
+                            <Users className="h-4 w-4 text-[#4c6351]" />
+                            Personal a Transferir *
+                          </div>
+                          <span className="text-xs font-mono font-black text-[#4c6351] bg-[#4c6351]/10 px-3 py-1 border border-[#4c6351]/30">
+                            {selectedPersons.length} SELECCIONADO(S)
+                          </span>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1.5 border-2 border-ink/20 p-3 bg-black/8 rounded-sm">
+                          {persons.length === 0 ? (
+                            <div className="flex items-center justify-center gap-2 py-8 text-ink-soft/40">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="text-sm font-mono uppercase">
+                                Cargando personal...
+                              </span>
+                            </div>
+                          ) : (
+                            persons
+                              .filter(
+                                (p) =>
+                                  p.status === "active" ||
+                                  p.status === "idle" ||
+                                  p.status === "resting",
                               )
-                              const isSelected = !!sel
-                              return (
-                                <div
-                                  key={item.resource_id}
-                                  className={`flex items-center justify-between p-3 border transition-all ${
-                                    isSelected
-                                      ? "bg-[#c27c2f]/8 border-[#c27c2f]/40"
-                                      : "bg-transparent border-dashed border-ink/15 hover:border-ink/35 hover:bg-ink/4"
-                                  }`}
-                                >
+                              .map((person) => {
+                                const isSelected = selectedPersons.some(
+                                  (p) => p.person_id === person.id,
+                                )
+                                return (
                                   <button
                                     type="button"
-                                    className="flex items-center gap-3 cursor-pointer flex-1 bg-transparent border-none text-left p-0 outline-none focus:outline-none"
-                                    onClick={() => handleToggleResource(item.resource_id)}
+                                    key={person.id}
+                                    onClick={() => handleTogglePerson(person.id)}
+                                    className={`flex items-center gap-3 p-3 border cursor-pointer transition-all text-left w-full outline-none focus:outline-none ${
+                                      isSelected
+                                        ? "bg-[#4c6351]/8 border-[#4c6351]/40"
+                                        : "bg-transparent border-dashed border-ink/15 hover:border-ink/35 hover:bg-ink/4"
+                                    }`}
                                   >
                                     <div
                                       className={`h-5 w-5 border-2 flex items-center justify-center shrink-0 transition-colors ${
                                         isSelected
-                                          ? "border-[#c27c2f] bg-[#c27c2f]/15"
+                                          ? "border-[#4c6351] bg-[#4c6351]/15"
                                           : "border-ink/25"
                                       }`}
                                     >
-                                      {isSelected && <Check className="h-3 w-3 text-[#c27c2f]" />}
+                                      {isSelected && <Check className="h-3 w-3 text-[#4c6351]" />}
                                     </div>
-                                    <div className="w-8 h-8 rounded-sm bg-black/10 border border-ink/15 flex items-center justify-center shrink-0">
-                                      {getCategoryIcon(item.resource?.category)}
+                                    <div className="w-8 h-8 rounded-sm bg-[#4c6351]/10 border border-[#4c6351]/20 flex items-center justify-center shrink-0">
+                                      <Users className="h-4 w-4 text-[#4c6351]/70" />
                                     </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-sm font-mono font-bold text-ink uppercase truncate">
-                                        {item.resource?.name || "Desconocido"}
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <span className="text-sm font-mono text-ink font-bold uppercase truncate">
+                                        {person.first_name} {person.last_name}
                                       </span>
-                                      <span className="text-xs font-mono text-ink-soft/60 uppercase leading-none mt-0.5">
-                                        {item.resource?.category || "N/A"} · Disponible:{" "}
-                                        <strong>{item.current_quantity}</strong>{" "}
-                                        {item.resource?.unit || "U"}
-                                      </span>
+                                      {person.profession && (
+                                        <span className="text-xs font-mono text-ink-soft/60 uppercase mt-0.5">
+                                          {person.profession.name}
+                                        </span>
+                                      )}
                                     </div>
-                                  </button>
-                                  {isSelected && (
-                                    <div className="flex items-center gap-2 ml-3 shrink-0">
-                                      <span className="text-[10px] font-mono text-ink-soft uppercase">
-                                        Cant:
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        max={item.current_quantity}
-                                        value={sel.requested_quantity}
-                                        onClick={(ev) => ev.stopPropagation()}
-                                        onChange={(e) =>
-                                          handleResourceQtyChange(
-                                            item.resource_id,
-                                            Number(e.target.value),
-                                          )
-                                        }
-                                        className="vintage-input w-20 text-sm py-1.5 px-2 text-center"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Persons section */}
-                  {(transferType === "people" || transferType === "both") && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-xs font-mono font-black text-ink uppercase tracking-widest flex items-center gap-2">
-                          <Users className="h-4 w-4 text-[#4c6351]" />
-                          Personal a Transferir *
-                        </div>
-                        <span className="text-xs font-mono font-black text-[#4c6351] bg-[#4c6351]/10 px-3 py-1 border border-[#4c6351]/30">
-                          {selectedPersons.length} SELECCIONADO(S)
-                        </span>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-1.5 border-2 border-ink/20 p-3 bg-black/8 rounded-sm">
-                        {persons.length === 0 ? (
-                          <div className="flex items-center justify-center gap-2 py-8 text-ink-soft/40">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-sm font-mono uppercase">
-                              Cargando personal...
-                            </span>
-                          </div>
-                        ) : (
-                          persons
-                            .filter(
-                              (p) =>
-                                p.status === "active" ||
-                                p.status === "idle" ||
-                                p.status === "resting",
-                            )
-                            .map((person) => {
-                              const isSelected = selectedPersons.some(
-                                (p) => p.person_id === person.id,
-                              )
-                              return (
-                                <button
-                                  type="button"
-                                  key={person.id}
-                                  onClick={() => handleTogglePerson(person.id)}
-                                  className={`flex items-center gap-3 p-3 border cursor-pointer transition-all text-left w-full outline-none focus:outline-none ${
-                                    isSelected
-                                      ? "bg-[#4c6351]/8 border-[#4c6351]/40"
-                                      : "bg-transparent border-dashed border-ink/15 hover:border-ink/35 hover:bg-ink/4"
-                                  }`}
-                                >
-                                  <div
-                                    className={`h-5 w-5 border-2 flex items-center justify-center shrink-0 transition-colors ${
-                                      isSelected
-                                        ? "border-[#4c6351] bg-[#4c6351]/15"
-                                        : "border-ink/25"
-                                    }`}
-                                  >
-                                    {isSelected && <Check className="h-3 w-3 text-[#4c6351]" />}
-                                  </div>
-                                  <div className="w-8 h-8 rounded-sm bg-[#4c6351]/10 border border-[#4c6351]/20 flex items-center justify-center shrink-0">
-                                    <Users className="h-4 w-4 text-[#4c6351]/70" />
-                                  </div>
-                                  <div className="flex flex-col min-w-0 flex-1">
-                                    <span className="text-sm font-mono text-ink font-bold uppercase truncate">
-                                      {person.first_name} {person.last_name}
+                                    <span
+                                      className={`text-[10px] font-mono font-black px-2 py-0.5 shrink-0 ${
+                                        person.status === "active"
+                                          ? "text-[#4c6351] bg-[#4c6351]/10 border border-[#4c6351]/25"
+                                          : "text-ink-soft/60 bg-ink/5 border border-ink/15"
+                                      }`}
+                                    >
+                                      {person.status?.toUpperCase()}
                                     </span>
-                                    {person.profession && (
-                                      <span className="text-xs font-mono text-ink-soft/60 uppercase mt-0.5">
-                                        {person.profession.name}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span
-                                    className={`text-[10px] font-mono font-black px-2 py-0.5 shrink-0 ${
-                                      person.status === "active"
-                                        ? "text-[#4c6351] bg-[#4c6351]/10 border border-[#4c6351]/25"
-                                        : "text-ink-soft/60 bg-ink/5 border border-ink/15"
-                                    }`}
-                                  >
-                                    {person.status?.toUpperCase()}
-                                  </span>
-                                </button>
-                              )
-                            })
-                        )}
+                                  </button>
+                                )
+                              })
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal footer */}
-                <div className="px-8 py-6 border-t-2 border-dashed border-ink/20 flex items-center justify-between gap-4 bg-black/8">
-                  <button
-                    type="button"
-                    onClick={handleDiscardDraft}
-                    className="px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest text-ink-soft/70 border-2 border-ink/20 hover:bg-ink/8 hover:text-ink hover:border-ink/40 transition-all"
-                  >
-                    Descartar Borrador
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    className="flex items-center gap-3 px-10 py-3.5 bg-[#4c6351] hover:bg-[#3d5041] text-white text-sm font-mono font-black uppercase tracking-widest transition-all disabled:opacity-50 shadow-[0_0_12px_rgba(76,99,81,0.35)] hover:shadow-[0_0_20px_rgba(76,99,81,0.5)]"
-                  >
-                    {createMutation.isPending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5" />
                     )}
-                    Solicitar Traslado
-                  </button>
-                </div>
-              </form>
+                  </div>
+
+                  {/* Modal footer */}
+                  <div className="px-4 sm:px-8 py-4 sm:py-6 border-t-2 border-dashed border-ink/20 flex flex-wrap items-center justify-between gap-3 sm:gap-4 bg-black/8">
+                    <button
+                      type="button"
+                      onClick={handleDiscardDraft}
+                      className="px-6 py-3 font-mono text-sm font-bold uppercase tracking-widest text-ink-soft/70 border-2 border-ink/20 hover:bg-ink/8 hover:text-ink hover:border-ink/40 transition-all"
+                    >
+                      Descartar Borrador
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="flex items-center gap-3 px-10 py-3.5 bg-[#4c6351] hover:bg-[#3d5041] text-white text-sm font-mono font-black uppercase tracking-widest transition-all disabled:opacity-50 shadow-[0_0_12px_rgba(76,99,81,0.35)] hover:shadow-[0_0_20px_rgba(76,99,81,0.5)]"
+                    >
+                      {createMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
+                      Solicitar Traslado
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

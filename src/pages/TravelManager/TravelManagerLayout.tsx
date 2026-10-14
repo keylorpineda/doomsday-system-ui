@@ -74,7 +74,7 @@ export default function TravelManagerLayout() {
         utcTime={utcTime}
         extras={<AlertsBanner campId={campId} />}
       >
-        <div className="p-0" style={{ minHeight: "100%" }}>
+        <div className="h-full">
           <Outlet />
         </div>
       </RoleShell>

@@ -6,6 +6,7 @@ import { useRef, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useCamp } from "../context/CampContext"
 
+import { Portal } from "@/components/ui/Portal"
 import { getMe, updateMyAvatar, uploadAvatarImage } from "@/features/auth/services/auth.service"
 import { getDashboardMetrics } from "@/features/dashboard/services/dashboard.service"
 
@@ -194,81 +195,83 @@ function XPBar({ score }: { score: number }) {
 
 function TrophyModal({ trophy, onClose }: { trophy: Trophy | null; onClose: () => void }) {
   return (
-    <AnimatePresence>
-      {trophy ? (
-        <motion.div
-          className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <div className="absolute inset-0 bg-black/80" />
+    <Portal>
+      <AnimatePresence>
+        {trophy ? (
           <motion.div
-            initial={{ scale: 0.5, rotate: -10, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            exit={{ scale: 0.6, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 180, damping: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative z-10 bg-[#161513] border-2 border-[rgba(179,133,54,0.55)] p-8 max-w-sm w-full text-center shadow-[0_0_32px_rgba(179,133,54,0.2)]"
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
           >
-            {/* Tape strip */}
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-20 h-5 bg-[rgba(179,133,54,0.2)] border border-dashed border-[rgba(179,133,54,0.4)]" />
-            <button
-              onClick={onClose}
-              className="absolute top-2.5 right-2.5 bg-[rgba(0,0,0,0.5)] border border-[rgba(179,133,54,0.3)] text-[rgba(212,190,140,0.8)] px-2 py-0.5 font-mono text-xs cursor-pointer hover:border-[rgba(179,133,54,0.7)]"
+            <div className="absolute inset-0 bg-black/80" />
+            <motion.div
+              initial={{ scale: 0.5, rotate: -10, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 180, damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 bg-[#161513] border-2 border-[rgba(179,133,54,0.55)] p-8 max-w-sm w-full text-center shadow-[0_0_32px_rgba(179,133,54,0.2)] max-h-[calc(100dvh-2rem)] overflow-y-auto"
             >
-              ✕
-            </button>
-            <div
-              className={`text-5xl mb-4 leading-none ${!trophy.unlocked ? "grayscale opacity-40" : ""}`}
-            >
-              {trophy.icon}
-            </div>
-            <div className="font-mono text-[9px] text-[rgba(154,144,128,0.6)] tracking-[3px] uppercase mb-1.5">
-              {RARITY_LABEL[trophy.rarity]} · {trophy.unlocked ? "✓ DESBLOQUEADO" : "✗ BLOQUEADO"}
-            </div>
-            <div className="font-typewriter text-base font-bold uppercase tracking-wider text-[rgba(212,190,140,0.92)] border-b border-dashed border-[rgba(154,144,128,0.3)] pb-3 mb-3">
-              {trophy.name}
-            </div>
-            <p className="font-mono text-xs text-[rgba(154,144,128,0.6)] leading-relaxed mb-3">
-              {trophy.description}
-            </p>
-            <div className="flex justify-center gap-1 mb-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3.5 h-3.5 ${i < trophy.rarity ? "fill-current" : ""}`}
-                  style={{ color: i < trophy.rarity ? "#b38536" : "rgba(154,144,128,0.25)" }}
-                />
-              ))}
-            </div>
-            {!trophy.unlocked && trophy.progress !== undefined && (
-              <div className="mb-4">
-                <div className="flex justify-between font-mono text-[9px] text-[rgba(154,144,128,0.5)] uppercase mb-1">
-                  <span>PROGRESO</span>
-                  <span>{trophy.progressLabel}</span>
-                </div>
-                <div className="h-1.5 bg-[rgba(0,0,0,0.5)] border border-[rgba(179,133,54,0.2)] overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${trophy.progress}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="h-full bg-[rgba(179,133,54,0.6)]"
-                  />
-                </div>
+              {/* Tape strip */}
+              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-20 h-5 bg-[rgba(179,133,54,0.2)] border border-dashed border-[rgba(179,133,54,0.4)]" />
+              <button
+                onClick={onClose}
+                className="absolute top-2.5 right-2.5 bg-[rgba(0,0,0,0.5)] border border-[rgba(179,133,54,0.3)] text-[rgba(212,190,140,0.8)] px-2 py-0.5 font-mono text-xs cursor-pointer hover:border-[rgba(179,133,54,0.7)]"
+              >
+                ✕
+              </button>
+              <div
+                className={`text-5xl mb-4 leading-none ${!trophy.unlocked ? "grayscale opacity-40" : ""}`}
+              >
+                {trophy.icon}
               </div>
-            )}
-            <button
-              onClick={onClose}
-              className="mt-2 bg-[rgba(179,133,54,0.15)] border border-[rgba(179,133,54,0.4)] text-[rgba(212,190,140,0.8)] font-mono text-xs uppercase tracking-widest px-6 py-2 cursor-pointer hover:bg-[rgba(179,133,54,0.25)] transition-colors"
-            >
-              CERRAR
-            </button>
+              <div className="font-mono text-[9px] text-[rgba(154,144,128,0.6)] tracking-[3px] uppercase mb-1.5">
+                {RARITY_LABEL[trophy.rarity]} · {trophy.unlocked ? "✓ DESBLOQUEADO" : "✗ BLOQUEADO"}
+              </div>
+              <div className="font-typewriter text-base font-bold uppercase tracking-wider text-[rgba(212,190,140,0.92)] border-b border-dashed border-[rgba(154,144,128,0.3)] pb-3 mb-3">
+                {trophy.name}
+              </div>
+              <p className="font-mono text-xs text-[rgba(154,144,128,0.6)] leading-relaxed mb-3">
+                {trophy.description}
+              </p>
+              <div className="flex justify-center gap-1 mb-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3.5 h-3.5 ${i < trophy.rarity ? "fill-current" : ""}`}
+                    style={{ color: i < trophy.rarity ? "#b38536" : "rgba(154,144,128,0.25)" }}
+                  />
+                ))}
+              </div>
+              {!trophy.unlocked && trophy.progress !== undefined && (
+                <div className="mb-4">
+                  <div className="flex justify-between font-mono text-[9px] text-[rgba(154,144,128,0.5)] uppercase mb-1">
+                    <span>PROGRESO</span>
+                    <span>{trophy.progressLabel}</span>
+                  </div>
+                  <div className="h-1.5 bg-[rgba(0,0,0,0.5)] border border-[rgba(179,133,54,0.2)] overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${trophy.progress}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full bg-[rgba(179,133,54,0.6)]"
+                    />
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                className="mt-2 bg-[rgba(179,133,54,0.15)] border border-[rgba(179,133,54,0.4)] text-[rgba(212,190,140,0.8)] font-mono text-xs uppercase tracking-widest px-6 py-2 cursor-pointer hover:bg-[rgba(179,133,54,0.25)] transition-colors"
+              >
+                CERRAR
+              </button>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </Portal>
   )
 }
 

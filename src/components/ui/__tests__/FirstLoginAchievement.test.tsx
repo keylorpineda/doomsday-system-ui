@@ -23,20 +23,20 @@ describe("FirstLoginAchievement", () => {
   })
 
   it("does not render without a user id", () => {
-    const { container } = render(<FirstLoginAchievement userId="" />)
+    render(<FirstLoginAchievement userId="" />)
 
     act(() => vi.advanceTimersByTime(900))
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText("PRIMER TRABAJO")).not.toBeInTheDocument()
   })
 
   it("does not render when the achievement was already seen", () => {
     localStorage.setItem("gdf_first_login_9", "1")
 
-    const { container } = render(<FirstLoginAchievement userId="9" />)
+    render(<FirstLoginAchievement userId="9" />)
     act(() => vi.advanceTimersByTime(900))
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText("PRIMER TRABAJO")).not.toBeInTheDocument()
   })
 
   it("shows the first login achievement and dismisses it", () => {
@@ -58,11 +58,12 @@ describe("FirstLoginAchievement", () => {
   it("dismisses from the overlay and ignores api failures", () => {
     vi.mocked(api.post).mockRejectedValue(new Error("network"))
 
-    const { container } = render(<FirstLoginAchievement userId="10" />)
+    render(<FirstLoginAchievement userId="10" />)
     act(() => vi.advanceTimersByTime(800))
 
     expect(screen.getByText("PRIMER TRABAJO")).toBeInTheDocument()
-    fireEvent.click(container.firstElementChild as HTMLElement)
+    // El overlay vive en un portal (document.body)
+    fireEvent.click(screen.getByTestId("first-login-overlay"))
 
     expect(localStorage.getItem("gdf_first_login_10")).toBe("1")
     expect(api.post).toHaveBeenCalledWith("/users/me/achievements/first-login")

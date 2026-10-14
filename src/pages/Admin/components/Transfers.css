@@ -1,42 +1,46 @@
-/* El layout principal usa Tailwind (igual que CampLeader).
-   Este archivo solo conserva clases de utilidad que no están en Tailwind. */
+/* En @layer components: las utilidades de Tailwind (@layer utilities) que se
+   pongan en el JSX ganan sobre estas reglas, como se espera. */
+@layer components {
+  /* El layout principal usa Tailwind (igual que CampLeader).
+     Este archivo solo conserva clases de utilidad que no están en Tailwind. */
 
-.radio-group {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  font-family: var(--font-mono);
-  font-size: 0.88rem;
-}
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+  }
 
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  line-height: 1.4;
-}
+  .radio-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    line-height: 1.4;
+  }
 
-.radio-label input[type="radio"] {
-  accent-color: var(--accent-warning);
-  width: 14px;
-  height: 14px;
-}
+  .radio-label input[type="radio"] {
+    accent-color: var(--accent-warning);
+    width: 14px;
+    height: 14px;
+  }
 
-.leader-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  cursor: pointer;
-  white-space: nowrap;
-  color: var(--bg-paper);
-  flex-shrink: 0;
-}
+  .leader-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--bg-paper);
+    flex-shrink: 0;
+  }
 
-.leader-label input[type="checkbox"] {
-  accent-color: var(--accent-warning);
-  width: 14px;
-  height: 14px;
+  .leader-label input[type="checkbox"] {
+    accent-color: var(--accent-warning);
+    width: 14px;
+    height: 14px;
+  }
 }

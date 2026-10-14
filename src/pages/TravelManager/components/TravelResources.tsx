@@ -12,6 +12,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { Portal } from "@/components/ui/Portal"
 import { getCamps } from "@/features/camps/services/camps.service"
 import { getInventory } from "@/features/inventory/services/inventory.service"
 import { getPersons } from "@/features/persons/services/persons.service"
@@ -568,7 +569,7 @@ export default function TravelResources() {
       </div>
 
       {/* 3. Layout de columnas */}
-      <div className="flex-1 flex gap-4 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 overflow-hidden">
         {/* LEFT: Inventario en hoja crema de ancho completo */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="tm-paper tm-paper-texture flex-1 flex flex-col overflow-hidden p-6 relative">
@@ -914,162 +915,165 @@ export default function TravelResources() {
       </div>
 
       {/* ── Modal de Detalle (Ficha de Recurso) ── */}
-      <AnimatePresence>
-        {selectedResource && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setSelectedId(null)}
-          >
+      <Portal>
+        <AnimatePresence>
+          {selectedResource && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="tm-paper tm-paper-texture w-full max-w-lg overflow-hidden shadow-2xl relative p-8 border-4 border-double border-ink/40"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setSelectedId(null)}
             >
-              {/* Seal mark */}
-              <div className="absolute top-10 right-10 flex flex-col items-center rotate-6 select-none opacity-20 pointer-events-none">
-                <div className="border-4 border-ink p-1 mb-1">
-                  <span className="text-lg font-black font-mono px-2">REGISTRADO</span>
-                </div>
-                <span className="text-xs font-mono font-black italic text-ink">
-                  Refugio Alfa - Logística
-                </span>
-              </div>
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setSelectedId(null)}
-                className="absolute top-4 right-4 text-ink-soft hover:text-ink transition-colors"
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="tm-paper tm-paper-texture w-full max-w-lg shadow-2xl relative p-8 border-4 border-double border-ink/40 max-h-[calc(100dvh-2rem)] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
               >
-                <XCircle className="h-6 w-6" />
-              </button>
-
-              <div className="flex-1 flex flex-col justify-between">
-                <div className="flex gap-6 border-b-2 border-dashed border-ink/20 pb-5 mb-6 items-start">
-                  {/* Icon Area */}
-                  <div className="w-16 h-16 shrink-0 bg-ink/5 border-2 border-ink/10 flex items-center justify-center rounded-sm text-3xl">
-                    {getCategoryInfo(selectedResource.category).icon}
+                {/* Seal mark */}
+                <div className="absolute top-10 right-10 flex flex-col items-center rotate-6 select-none opacity-20 pointer-events-none">
+                  <div className="border-4 border-ink p-1 mb-1">
+                    <span className="text-lg font-black font-mono px-2">REGISTRADO</span>
                   </div>
-                  <div className="flex-1 min-w-0 pt-1">
-                    <span className="text-[10px] font-mono text-[#c27c2f] uppercase tracking-widest font-black block mb-1">
-                      EXPEDIENTE DE SUMINISTROS
-                    </span>
-                    <h2 className="font-typewriter text-3xl font-black text-ink uppercase leading-none truncate">
-                      {selectedResource.name}
-                    </h2>
-                  </div>
+                  <span className="text-xs font-mono font-black italic text-ink">
+                    Refugio Alfa - Logística
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                  {/* Left Column: Details */}
-                  <div className="md:col-span-1 flex flex-col gap-4 font-mono text-xs text-ink/80 bg-ink/5 border border-ink/10 p-5 rounded-sm">
-                    <div>
-                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
-                        Clasificación
-                      </span>
-                      <span className="text-sm font-black text-ink uppercase">
-                        {getCategoryInfo(selectedResource.category).label}
-                      </span>
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(null)}
+                  className="absolute top-4 right-4 text-ink-soft hover:text-ink transition-colors"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+
+                <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex gap-6 border-b-2 border-dashed border-ink/20 pb-5 mb-6 items-start">
+                    {/* Icon Area */}
+                    <div className="w-16 h-16 shrink-0 bg-ink/5 border-2 border-ink/10 flex items-center justify-center rounded-sm text-3xl">
+                      {getCategoryInfo(selectedResource.category).icon}
                     </div>
-                    <div>
-                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
-                        Asignado a Base
+                    <div className="flex-1 min-w-0 pt-1">
+                      <span className="text-[10px] font-mono text-[#c27c2f] uppercase tracking-widest font-black block mb-1">
+                        EXPEDIENTE DE SUMINISTROS
                       </span>
-                      <span className="text-sm font-black text-ink uppercase">
-                        {getCampName(selectedResource.campId)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
-                        Unidad de Medida
-                      </span>
-                      <span className="text-sm font-black text-[#df8120] uppercase bg-[#df8120]/10 px-2 py-0.5 rounded-sm">
-                        {selectedResource.unit}
-                      </span>
+                      <h2 className="font-typewriter text-3xl font-black text-ink uppercase leading-none truncate">
+                        {selectedResource.name}
+                      </h2>
                     </div>
                   </div>
 
-                  {/* Middle & Right Column: Vital Stock & Progress */}
-                  <div className="md:col-span-2 flex flex-col gap-4">
-                    {/* Vital Stock Box */}
-                    <div className="bg-[#f5ecd7] flex-1 p-5 rounded-sm border border-[#d4c4a8]/50 flex items-center justify-between relative overflow-hidden shadow-inner">
-                      <div className="flex flex-col z-10">
-                        <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider mb-1 font-black">
-                          Inventario Disponible
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+                    {/* Left Column: Details */}
+                    <div className="md:col-span-1 flex flex-col gap-4 font-mono text-xs text-ink/80 bg-ink/5 border border-ink/10 p-5 rounded-sm">
+                      <div>
+                        <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                          Clasificación
                         </span>
-                        <div className="flex items-baseline gap-2">
-                          <div className="text-5xl font-typewriter font-black text-ink leading-none tracking-tighter">
-                            {selectedResource.quantity}
+                        <span className="text-sm font-black text-ink uppercase">
+                          {getCategoryInfo(selectedResource.category).label}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                          Asignado a Base
+                        </span>
+                        <span className="text-sm font-black text-ink uppercase">
+                          {getCampName(selectedResource.campId)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-ink-soft uppercase tracking-wider block font-bold mb-1 border-b border-ink/10 pb-1">
+                          Unidad de Medida
+                        </span>
+                        <span className="text-sm font-black text-[#df8120] uppercase bg-[#df8120]/10 px-2 py-0.5 rounded-sm">
+                          {selectedResource.unit}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Middle & Right Column: Vital Stock & Progress */}
+                    <div className="md:col-span-2 flex flex-col gap-4">
+                      {/* Vital Stock Box */}
+                      <div className="bg-[#f5ecd7] flex-1 p-5 rounded-sm border border-[#d4c4a8]/50 flex items-center justify-between relative overflow-hidden shadow-inner">
+                        <div className="flex flex-col z-10">
+                          <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider mb-1 font-black">
+                            Inventario Disponible
+                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <div className="text-5xl font-typewriter font-black text-ink leading-none tracking-tighter">
+                              {selectedResource.quantity}
+                            </div>
+                            <span className="text-xs font-mono font-black text-ink-soft uppercase">
+                              {selectedResource.unit}
+                            </span>
                           </div>
-                          <span className="text-xs font-mono font-black text-ink-soft uppercase">
-                            {selectedResource.unit}
-                          </span>
                         </div>
-                      </div>
-                      <div
-                        className={`z-10 px-4 py-2 border-2 font-mono font-black text-xs uppercase shadow-sm bg-white/50 backdrop-blur-sm ${getStatusColor(selectedResource.status).replace("text-", "border-").replace("text-[#c27c2f]", "border-[#df8120]").replace("text-[#4c6351]", "border-[#4c6351]")}`}
-                      >
-                        <span className={getStatusColor(selectedResource.status)}>
-                          {getStatusLabel(selectedResource.status)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Threshold Bar */}
-                    <div className="bg-[#faf4e6]/50 p-4 border border-dashed border-ink/20 rounded-sm">
-                      <div className="flex justify-between items-center text-xs font-mono mb-2">
-                        <span className="text-ink-soft uppercase font-bold flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5 text-[#df8120]" />
-                          Umbral Crítico Mínimo
-                        </span>
-                        <span className="font-black text-ink">
-                          {selectedResource.minThreshold || 0} {selectedResource.unit.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="h-4 w-full bg-ink/5 border border-ink/20 relative rounded-sm overflow-hidden">
                         <div
-                          className={`h-full ${getLevelColor(selectedResource.status)} opacity-80 shadow-inner`}
-                          style={{
-                            width: `${Math.min((selectedResource.quantity / (selectedResource.minThreshold || 1)) * 50, 100)}%`,
-                          }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-[8px] font-mono font-black text-ink/40 uppercase tracking-[0.3em]">
-                            NIVEL_RECURSO_ACTUAL
+                          className={`z-10 px-4 py-2 border-2 font-mono font-black text-xs uppercase shadow-sm bg-white/50 backdrop-blur-sm ${getStatusColor(selectedResource.status).replace("text-", "border-").replace("text-[#c27c2f]", "border-[#df8120]").replace("text-[#4c6351]", "border-[#4c6351]")}`}
+                        >
+                          <span className={getStatusColor(selectedResource.status)}>
+                            {getStatusLabel(selectedResource.status)}
                           </span>
+                        </div>
+                      </div>
+
+                      {/* Threshold Bar */}
+                      <div className="bg-[#faf4e6]/50 p-4 border border-dashed border-ink/20 rounded-sm">
+                        <div className="flex justify-between items-center text-xs font-mono mb-2">
+                          <span className="text-ink-soft uppercase font-bold flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-[#df8120]" />
+                            Umbral Crítico Mínimo
+                          </span>
+                          <span className="font-black text-ink">
+                            {selectedResource.minThreshold || 0}{" "}
+                            {selectedResource.unit.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="h-4 w-full bg-ink/5 border border-ink/20 relative rounded-sm overflow-hidden">
+                          <div
+                            className={`h-full ${getLevelColor(selectedResource.status)} opacity-80 shadow-inner`}
+                            style={{
+                              width: `${Math.min((selectedResource.quantity / (selectedResource.minThreshold || 1)) * 50, 100)}%`,
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-[8px] font-mono font-black text-ink/40 uppercase tracking-[0.3em]">
+                              NIVEL_RECURSO_ACTUAL
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-6">
-                  <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider block font-bold mb-1.5">
-                    Recomendación de Uso y Observaciones
-                  </span>
-                  <div className="p-4 bg-white/40 border border-ink/10 border-l-4 border-l-[#c27c2f] rounded-sm italic font-typewriter text-xs text-ink/80 leading-relaxed min-h-[60px] shadow-sm">
-                    {selectedResource.usageNotes ||
-                      selectedResource.description ||
-                      "Sin instrucciones adicionales de uso operativo registrado para este recurso."}
+                  <div className="mt-6">
+                    <span className="text-[10px] font-mono text-ink-soft uppercase tracking-wider block font-bold mb-1.5">
+                      Recomendación de Uso y Observaciones
+                    </span>
+                    <div className="p-4 bg-white/40 border border-ink/10 border-l-4 border-l-[#c27c2f] rounded-sm italic font-typewriter text-xs text-ink/80 leading-relaxed min-h-[60px] shadow-sm">
+                      {selectedResource.usageNotes ||
+                        selectedResource.description ||
+                        "Sin instrucciones adicionales de uso operativo registrado para este recurso."}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-ink/15 pt-3 mt-6 flex justify-between items-center text-ink-soft/70 font-mono text-[9px] uppercase tracking-wider font-bold">
+                    <span>Actualizado: {new Date().toLocaleDateString("es-CR")}</span>
+                    <span className="border border-dashed border-ink/30 px-3 py-1">
+                      Ref. {selectedResource.id.slice(0, 8)}
+                    </span>
                   </div>
                 </div>
-
-                <div className="border-t border-ink/15 pt-3 mt-6 flex justify-between items-center text-ink-soft/70 font-mono text-[9px] uppercase tracking-wider font-bold">
-                  <span>Actualizado: {new Date().toLocaleDateString("es-CR")}</span>
-                  <span className="border border-dashed border-ink/30 px-3 py-1">
-                    Ref. {selectedResource.id.slice(0, 8)}
-                  </span>
-                </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

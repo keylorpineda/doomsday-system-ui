@@ -43,8 +43,8 @@ const PROF_EMOJI: Record<string, string> = {
   almacenista: "📦",
 }
 
-function getProfEmoji(profession: string) {
-  const key = profession.toLowerCase()
+function getProfEmoji(profession?: string | null) {
+  const key = (profession ?? "").toLowerCase()
   for (const [k, v] of Object.entries(PROF_EMOJI)) {
     if (key.includes(k)) return v
   }

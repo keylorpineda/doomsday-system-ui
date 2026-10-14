@@ -99,7 +99,7 @@ Follow these steps to set up the development environment on your local machine. 
    This command installs all the React libraries, build tools, and testing dependencies.
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Configure Environment Variables:**
@@ -113,7 +113,7 @@ Follow these steps to set up the development environment on your local machine. 
 4. **Start the Development Server:**
    This will spin up Vite's incredibly fast dev server. Changes in your code will reflect in the browser instantly without a hard refresh.
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## 📂 Project Architecture (Feature-Sliced Design)
@@ -140,7 +140,7 @@ Our testing strategy focuses entirely on **End-to-End (E2E) Testing** via **Play
 To execute the test suite:
 
 ```bash
-npm run test:e2e
+pnpm test:e2e
 ```
 
 Playwright will launch headless browsers and perform full login sequences, dashboard navigations, and form submissions to verify the system works from end to end.

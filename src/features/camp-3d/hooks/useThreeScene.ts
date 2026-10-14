@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 
+import { useLatestRef } from "./useLatestRef"
+
 import type { RefObject } from "react"
 
 /** Estado de la cámara orbital (drag + WASD), compartido con el minimapa. */
@@ -59,7 +61,7 @@ const MOVE_KEYS = new Set([
  * se construye en `onReady` y se anima en `onFrame`.
  *
  * Devuelve un ref al `ThreeContext` (null hasta que la escena está lista), útil
- * para el raycaster y overlays como el minimapa.
+ * para el raycaster.
  */
 export function useThreeScene(
   canvasRef: RefObject<HTMLCanvasElement | null>,
@@ -67,17 +69,16 @@ export function useThreeScene(
 ) {
   const contextRef = useRef<ThreeContext | null>(null)
   // Mantenemos callbacks en refs para no re-montar la escena si cambian.
-  const onReadyRef = useRef(onReady)
-  const onFrameRef = useRef(onFrame)
-  onReadyRef.current = onReady
-  onFrameRef.current = onFrame
+  const onReadyRef = useLatestRef(onReady)
+  const onFrameRef = useLatestRef(onFrame)
   const pausedRef = useRef(paused)
-  // Reanuda el loop; lo define el efecto de montaje (null si no hay escena).
-  const resumeRef = useRef<(() => void) | null>(null)
+  // Arranca/detiene el loop según pausa y visibilidad; lo define el efecto de
+  // montaje (null mientras no hay escena).
+  const syncLoopRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     pausedRef.current = paused
-    if (!paused) resumeRef.current?.()
+    syncLoopRef.current?.()
   }, [paused])
 
   useEffect(() => {
@@ -212,21 +213,15 @@ export function useThreeScene(
     window.addEventListener("resize", resize)
 
     // ---- LOOP ----
-    // Use actual RAF timestamp (ms → s) so animations run at correct speed
-    // regardless of monitor refresh rate (60 / 120 / 144 Hz).
-    // Movement speed is normalised by delta so WASD feels identical at any Hz.
-    let rafId = 0
+    // renderer.setAnimationLoop entrega el timestamp del frame (ms → s) para que
+    // las animaciones vayan a la misma velocidad a 60 / 120 / 144 Hz; el
+    // movimiento WASD se normaliza por delta por la misma razón.
+    let running = false
     let lastTs = -1
     const fw = new THREE.Vector3()
     const rt = new THREE.Vector3()
 
-    const loop = (timestamp: DOMHighResTimeStamp) => {
-      if (pausedRef.current) {
-        rafId = 0
-        lastTs = -1 // al reanudar, el primer frame no debe ver un salto de dt
-        return
-      }
-      rafId = requestAnimationFrame(loop)
+    const frame = (timestamp: DOMHighResTimeStamp) => {
       const t = timestamp * 0.001 // seconds, monotonically increasing
       const dt = lastTs < 0 ? 0.016 : Math.min(timestamp * 0.001 - lastTs, 0.05)
       lastTs = t
@@ -257,43 +252,28 @@ export function useThreeScene(
       renderer.render(scene, camera)
     }
 
-    const resume = () => {
-      if (rafId === 0 && !document.hidden && !pausedRef.current) {
-        rafId = requestAnimationFrame(loop)
-      }
+    // Sólo se renderiza con la pestaña visible y sin pausa (una ventana encima).
+    const syncLoop = () => {
+      const shouldRun = !document.hidden && !pausedRef.current
+      if (shouldRun === running) return
+      running = shouldRun
+      lastTs = -1 // al reanudar, el primer frame no debe ver un salto de dt
+      renderer.setAnimationLoop(shouldRun ? frame : null)
     }
-    resumeRef.current = resume
+    syncLoopRef.current = syncLoop
+    document.addEventListener("visibilitychange", syncLoop)
 
-    // ---- VISIBILITY — pause RAF when tab is hidden to save GPU/battery ----
-    const onVisibility = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(rafId)
-        rafId = 0
-        lastTs = -1 // reset so next frame doesn't spike dt
-      } else {
-        resume()
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibility)
-
-    // Siempre se dibuja al menos un frame (aunque arranque en pausa) para que
-    // la escena no aparezca negra al quitar la pausa.
-    if (pausedRef.current) {
-      pausedRef.current = false
-      loop(performance.now())
-      cancelAnimationFrame(rafId)
-      rafId = 0
-      lastTs = -1
-      pausedRef.current = true
-    } else {
-      rafId = requestAnimationFrame(loop)
-    }
+    // Siempre se dibuja un primer frame (aunque arranque en pausa) para que la
+    // escena no aparezca negra al quitar la pausa.
+    frame(performance.now())
+    lastTs = -1
+    syncLoop()
 
     // ---- CLEANUP ----
     return () => {
-      cancelAnimationFrame(rafId)
-      resumeRef.current = null
-      document.removeEventListener("visibilitychange", onVisibility)
+      renderer.setAnimationLoop(null)
+      syncLoopRef.current = null
+      document.removeEventListener("visibilitychange", syncLoop)
       resizeObserver.disconnect()
       window.removeEventListener("resize", resize)
       canvas.removeEventListener("mousedown", onMouseDown)
@@ -308,7 +288,7 @@ export function useThreeScene(
       renderer.dispose()
       contextRef.current = null
     }
-  }, [canvasRef])
+  }, [canvasRef, onReadyRef, onFrameRef])
 
   return contextRef
 }

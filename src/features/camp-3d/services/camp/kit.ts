@@ -1,18 +1,11 @@
 import * as THREE from "three"
 
 import { getCampVisuals } from "../campVisuals"
-import {
-  makeBrickTex,
-  makeConcreteTex,
-  makeCorrugateTex,
-  makeGroundTex,
-  makeRustTex,
-  makeSandbagTex,
-  makeWoodTex,
-} from "../textureBuilder"
+import { getTexturePair } from "../textureLoader"
 
 import type { CampVisuals } from "../campVisuals"
-import type { TexPair } from "../textureBuilder"
+import type { TextureKind } from "../textureBuilder"
+import type { LoadedTexPair as TexPair } from "../textureLoader"
 
 /**
  * Kit de construcción compartido por todos los módulos del campamento:
@@ -91,10 +84,11 @@ export function createKit(root: THREE.Group, campId: string) {
   }
 
   // ---- Texturas procedurales (una sola repetición: los UVs van en metros) ----
-  // textureBuilder las cachea a nivel de módulo y las comparte entre escenas,
-  // así que NO se registran para liberarlas: otra escena (otro campamento)
-  // puede seguir usándolas.
-  const tex = (tp: TexPair) => {
+  // Se generan en un Web Worker (textureLoader): llegan provisorias y se
+  // completan solas sin bloquear la interfaz. Están cacheadas y compartidas
+  // entre escenas, así que NO se registran para liberarlas.
+  const tex = (kind: TextureKind) => {
+    const tp = getTexturePair(kind, seed, weathering)
     tp.map.repeat.set(1, 1)
     tp.normalMap.repeat.set(1, 1)
     tp.map.colorSpace = THREE.SRGBColorSpace
@@ -102,17 +96,17 @@ export function createKit(root: THREE.Group, campId: string) {
   }
   // La chapa ondulada tiene un patrón de alta frecuencia: repetirla cada metro
   // produce moiré a distancia, así que se estira (cada onda queda de ~25 cm).
-  const corrugated = tex(makeCorrugateTex(1, seed, weathering))
+  const corrugated = tex("corrugated")
   corrugated.map.repeat.set(0.12, 0.12)
   corrugated.normalMap.repeat.set(0.12, 0.12)
   const TX = {
-    brick: tex(makeBrickTex(1, seed, weathering)),
+    brick: tex("brick"),
     corrugated,
-    wood: tex(makeWoodTex(1, seed, weathering)),
-    concrete: tex(makeConcreteTex(1, seed, weathering)),
-    rust: tex(makeRustTex(1, seed, weathering)),
-    ground: tex(makeGroundTex(1, seed, weathering)),
-    sandbag: tex(makeSandbagTex(1, seed)),
+    wood: tex("wood"),
+    concrete: tex("concrete"),
+    rust: tex("rust"),
+    ground: tex("ground"),
+    sandbag: tex("sandbag"),
   }
 
   // ---- Materiales ----

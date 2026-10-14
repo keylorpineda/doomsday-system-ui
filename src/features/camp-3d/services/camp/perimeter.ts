@@ -1,8 +1,7 @@
-import * as THREE from "three"
-
 import { CAMP, MAIN_GATE, WALL, WALL_TOWERS } from "./layout"
 
 import type { Kit, Placement } from "./kit"
+import type * as THREE from "three"
 
 const T = WALL.thickness
 const H = WALL.height
@@ -99,7 +98,6 @@ export function buildPerimeter(kit: Kit) {
 
   // ---- Torres de vigilancia ----
   const lamps: THREE.Mesh[] = []
-  let gateLight: THREE.SpotLight | null = null
   for (const tw of WALL_TOWERS) {
     const tx = tw.x === CAMP.halfX ? EAST_X : tw.x === -CAMP.halfX ? WEST_X : tw.x
     const tz = tw.z === CAMP.halfZ ? SOUTH_Z : tw.z === -CAMP.halfZ ? NORTH_Z : tw.z
@@ -133,14 +131,6 @@ export function buildPerimeter(kit: Kit) {
       castShadow: false,
     })
     lamps.push(lamp)
-
-    if (tw.gate && !gateLight && tw.x > 0) {
-      // Un único foco real ilumina el portón desde la torre este.
-      gateLight = new THREE.SpotLight(0xfff1d0, 40, 45, Math.PI / 5, 0.5, 1.6)
-      gateLight.position.set(tx - 1.5, cabY + 0.8, tz - 1)
-      gateLight.target.position.set(MAIN_GATE.x, 0, MAIN_GATE.z - 6)
-      kit.root.add(gateLight, gateLight.target)
-    }
   }
 
   // ---- Portón principal ----
@@ -190,5 +180,5 @@ export function buildPerimeter(kit: Kit) {
     ;(M.bulb as THREE.MeshStandardMaterial).emissiveIntensity = flicker
   }
 
-  return { setGateOpen, animate, lamps, gateLight }
+  return { setGateOpen, animate, lamps }
 }

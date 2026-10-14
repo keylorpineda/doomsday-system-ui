@@ -8,21 +8,19 @@ const MARKER_COLOR = 0xaaddff
 const BASE_EMISSIVE = 0.35
 
 /**
- * Paso 07 — marcador de perfil: zona translúcida clickeable + luz que pulsa
- * lentamente sobre el espacio del usuario dentro del campamento.
+ * Paso 07 — marcador de perfil: zona translúcida clickeable que pulsa
+ * lentamente sobre el espacio del usuario dentro del campamento. Pulsa su
+ * opacidad (no usa una luz real: cada luz dinámica encarece todos los shaders,
+ * y el brillo emisivo lo usa el resaltado del hover).
  */
 export interface ProfileMarker {
   /** Caja clickeable (objetivo del raycaster). */
   zone: THREE.Mesh
   /** Mueve el marcador (coordenadas raw, se escalan con SCENE_SCALE). */
   setPosition: (pos: [number, number, number]) => void
-  /**
-   * Oculta/muestra el marcador. Sólo se oculta la caja y se apaga la luz
-   * (intensidad 0): ocultar el grupo cambiaría el número de luces de la escena
-   * y forzaría a recompilar todos los shaders.
-   */
+  /** Oculta/muestra el marcador (p. ej. durante la cinemática del camión). */
   setHidden: (hidden: boolean) => void
-  /** Pulso de la luz; se llama en cada frame. */
+  /** Pulso de opacidad; se llama en cada frame. */
   update: (t: number) => void
   dispose: () => void
 }
@@ -48,15 +46,13 @@ export function createProfileMarker(
     baseEmissiveIntensity: BASE_EMISSIVE,
   }
   zone.userData = userData
-  const light = new THREE.PointLight(MARKER_COLOR, 0.9, 6)
-  group.add(zone, light)
+  group.add(zone)
   scene.add(group)
 
   let hidden = false
 
   const setPosition = ([x, y, z]: [number, number, number]) => {
     zone.position.set(x * SCENE_SCALE, y * SCENE_SCALE, z * SCENE_SCALE)
-    light.position.set(x * SCENE_SCALE, (y + 0.5) * SCENE_SCALE, z * SCENE_SCALE)
   }
   setPosition(pos)
 
@@ -66,15 +62,13 @@ export function createProfileMarker(
     setHidden: (value) => {
       hidden = value
       zone.visible = !value
-      if (value) light.intensity = 0
     },
     update: (t) => {
-      if (!hidden) light.intensity = 0.7 + Math.sin(t * 2.2) * 0.35
+      if (!hidden) material.opacity = 0.22 + Math.sin(t * 2.2) * 0.1
     },
     dispose: () => {
       geometry.dispose()
       material.dispose()
-      light.dispose()
       group.removeFromParent()
     },
   }

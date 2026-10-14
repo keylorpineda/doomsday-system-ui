@@ -205,7 +205,7 @@ export const MapDashboard = () => {
   const [analyzing, setAnalyzing] = useState(false)
 
   // Paso 08 — entrada al campamento 3D: flyTo cinematográfico y, a los 800ms,
-  // crossfade hacia la escena (el overlay 3D vive en Admin.tsx).
+  // Admin atiende la solicitud (useOpen3DRequest) y vuelve al campamento 3D.
   const setActiveCamp3D = use3DStore((s) => s.setActiveCamp)
   const setIs3DActive = use3DStore((s) => s.setIs3DActive)
   const is3DActive = use3DStore((s) => s.is3DActive)

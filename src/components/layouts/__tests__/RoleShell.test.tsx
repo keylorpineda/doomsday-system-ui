@@ -40,7 +40,7 @@ const renderShell = (props: Partial<ComponentProps<typeof RoleShell>> = {}) =>
 
 describe("RoleShell", () => {
   beforeEach(() => {
-    use3DStore.setState({ transferCinematic: 0 })
+    use3DStore.setState({ transferCinematic: 0, is3DActive: false })
   })
 
   it("keeps the 3D background rendering when no section window covers it", async () => {
@@ -53,6 +53,16 @@ describe("RoleShell", () => {
     renderShell({ showWindow: true })
 
     expect(await screen.findByTestId("camp-3d-wrapper")).toHaveAttribute("data-paused", "true")
+  })
+
+  it("closes the section window when the camp 3D view is requested", () => {
+    const onCloseWindow = vi.fn()
+    renderShell({ showWindow: true, onCloseWindow })
+
+    act(() => use3DStore.getState().setIs3DActive(true))
+
+    expect(onCloseWindow).toHaveBeenCalledTimes(1)
+    expect(use3DStore.getState().is3DActive).toBe(false)
   })
 
   it("closes the section window when a transfer cinematic starts", () => {

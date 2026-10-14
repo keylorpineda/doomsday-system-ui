@@ -14,8 +14,8 @@ interface Open3DButtonProps {
 
 /**
  * Botón reutilizable que abre la vista 3D del campamento del usuario actual.
- * Lee `camp_id` del store de auth y enciende `use3DStore`; el Camp3DOverlay
- * montado en cada layout reproduce la escena con su animación de entrada. Se usa
+ * Lee `camp_id` del store de auth y enciende `use3DStore`; el layout lo atiende
+ * con `useOpen3DRequest` cerrando la ventana que tapa el campamento 3D. Se usa
  * en los headers de worker/camp_leader/travel_manager/resource_manager (el
  * Admin ya lo tiene en CampSelector).
  */

@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react"
 
 import type { ComponentType, ReactNode } from "react"
 
-import { use3DStore } from "@/store/use3DStore"
+import { useOpen3DRequest } from "@/features/camp-3d/hooks/useOpen3DRequest"
 
 // El campamento 3D vive como FONDO permanente de cada panel de rol: se carga una
 // vez (chunk pesado de three.js diferido) y no se desmonta, así que cambiar de
@@ -69,18 +69,12 @@ export default function RoleShell({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Al crear un traslado se dispara la cinemática del camión en el campamento de
-  // fondo: cerramos la ventana de la sección para que se vea (y para que la
-  // escena, pausada mientras está tapada, vuelva a renderizar).
-  const onCloseWindowRef = useRef(onCloseWindow)
-  onCloseWindowRef.current = onCloseWindow
-  useEffect(
-    () =>
-      use3DStore.subscribe((state, prev) => {
-        if (state.transferCinematic > prev.transferCinematic) onCloseWindowRef.current()
-      }),
-    [],
-  )
+  // Solicitudes de "abrir el campamento 3D": botón Ver Campamento, aterrizaje
+  // tras el login y la cinemática del camión al crear un traslado (que también
+  // enciende `is3DActive`). El campamento 3D ya es el fondo: basta con cerrar
+  // la ventana de la sección que lo tapa (así además la escena, pausada mientras
+  // está tapada, vuelve a renderizar).
+  useOpen3DRequest(() => onCloseWindow())
 
   useEffect(() => {
     if (!menuOpen) return

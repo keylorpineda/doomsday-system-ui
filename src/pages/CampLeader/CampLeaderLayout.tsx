@@ -41,6 +41,7 @@ import type {
 import RoleShell, { type RoleNavItem } from "@/components/layouts/RoleShell"
 import AlertsBanner from "@/components/ui/AlertsBanner"
 import InactivityGuard from "@/components/ui/InactivityGuard"
+import { Portal } from "@/components/ui/Portal"
 import { useAlertSocket } from "@/hooks/useAlertSocket"
 import { use3DStore } from "@/store/use3DStore"
 import { useAuthStore, useTokenStore } from "@/store/useAuthStore"
@@ -340,23 +341,25 @@ export default function CampLeaderLayout() {
         extras={
           <>
             <AlertsBanner campId={campId} />
-            <AnimatePresence>
-              {actionLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-[100] font-mono text-center"
-                >
-                  <div className="border border-[#c27c2f] max-w-xs w-full bg-[#161513] p-5 shadow-[4px_4px_0_#000] rounded">
-                    <span className="animate-spin inline-block w-8 h-8 rounded-full border-2 border-[#c27c2f] border-t-transparent mb-4" />
-                    <p className="font-typewriter text-xs text-white font-bold uppercase tracking-wider">
-                      ACTUALIZANDO REGISTRO CENTRAL...
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <Portal>
+              <AnimatePresence>
+                {actionLoading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-neutral-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-[100] font-mono text-center"
+                  >
+                    <div className="border border-[#c27c2f] max-w-xs w-full bg-[#161513] p-5 shadow-[4px_4px_0_#000] rounded max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                      <span className="animate-spin inline-block w-8 h-8 rounded-full border-2 border-[#c27c2f] border-t-transparent mb-4" />
+                      <p className="font-typewriter text-xs text-white font-bold uppercase tracking-wider">
+                        ACTUALIZANDO REGISTRO CENTRAL...
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Portal>
           </>
         }
       >

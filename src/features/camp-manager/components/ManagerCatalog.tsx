@@ -12,6 +12,8 @@ import { api } from "../config/api"
 
 import type { FormEvent } from "react"
 
+import { Portal } from "@/components/ui/Portal"
+
 interface Resource {
   id: string
   name: string
@@ -205,7 +207,7 @@ export default function ManagerCatalog({ campId, onDataChanged }: ManagerCatalog
           border: "1px solid rgba(0,0,0,0.25)",
           borderLeft: "4px solid #6a4a1a",
           boxShadow: "-3px 10px 32px rgba(0,0,0,0.75)",
-          overflow: "hidden",
+          overflowX: "auto",
           color: "#1a1208",
         }}
       >
@@ -459,171 +461,177 @@ export default function ManagerCatalog({ campId, onDataChanged }: ManagerCatalog
 
       {/* MODAL: CREATE / EDIT */}
       {mode && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] shadow-2xl"
-          >
-            <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
-              {mode === "create" ? <Plus className="h-6 w-6" /> : <Pencil className="h-6 w-6" />}
-              <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
-                {mode === "create" ? "REGISTRAR NUEVO RECURSO" : "MODIFICAR RECURSO"}
-              </h4>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label
-                  htmlFor="catalog-name"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  NOMBRE DEL RECURSO:
-                </label>
-                <input
-                  id="catalog-name"
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono"
-                  placeholder="Ej: Comida Enlatada"
-                  required
-                />
+        <Portal>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
+                {mode === "create" ? <Plus className="h-6 w-6" /> : <Pencil className="h-6 w-6" />}
+                <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
+                  {mode === "create" ? "REGISTRAR NUEVO RECURSO" : "MODIFICAR RECURSO"}
+                </h4>
               </div>
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="catalog-category"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  CATEGORÍA:
-                </label>
-                <select
-                  id="catalog-category"
-                  value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono uppercase"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="catalog-unit"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  UNIDAD DE MEDIDA:
-                </label>
-                <input
-                  id="catalog-unit"
-                  type="text"
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono"
-                  placeholder="Ej: kg, litros, unidades"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="catalog-desc"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  DESCRIPCIÓN (OPCIONAL):
-                </label>
-                <textarea
-                  id="catalog-desc"
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  maxLength={200}
-                  rows={3}
-                  className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-mono resize-none"
-                  placeholder="Breve descripción del recurso..."
-                />
-              </div>
-
-              {errorState && (
-                <div className="text-sm text-red-400 uppercase border border-[#9c2720]/50 bg-[#9c2720]/10 p-3">
-                  {errorState}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="catalog-name"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    NOMBRE DEL RECURSO:
+                  </label>
+                  <input
+                    id="catalog-name"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono"
+                    placeholder="Ej: Comida Enlatada"
+                    required
+                  />
                 </div>
-              )}
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode(null)
-                    setErrorState(null)
-                  }}
-                  className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
-                >
-                  [CANCELAR]
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
-                  style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
-                >
-                  {submitting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" /> GUARDANDO...
-                    </>
-                  ) : mode === "create" ? (
-                    "REGISTRAR"
-                  ) : (
-                    "ACTUALIZAR"
-                  )}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="catalog-category"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    CATEGORÍA:
+                  </label>
+                  <select
+                    id="catalog-category"
+                    value={form.category}
+                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono uppercase"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="catalog-unit"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    UNIDAD DE MEDIDA:
+                  </label>
+                  <input
+                    id="catalog-unit"
+                    type="text"
+                    value={form.unit}
+                    onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                    className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-bold font-mono"
+                    placeholder="Ej: kg, litros, unidades"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="catalog-desc"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    DESCRIPCIÓN (OPCIONAL):
+                  </label>
+                  <textarea
+                    id="catalog-desc"
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    maxLength={200}
+                    rows={3}
+                    className="w-full bg-[#2a2824] border-2 border-black p-3 text-[#e0d8cc] outline-none text-base font-mono resize-none"
+                    placeholder="Breve descripción del recurso..."
+                  />
+                </div>
+
+                {errorState && (
+                  <div className="text-sm text-red-400 uppercase border border-[#9c2720]/50 bg-[#9c2720]/10 p-3">
+                    {errorState}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode(null)
+                      setErrorState(null)
+                    }}
+                    className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
+                  >
+                    [CANCELAR]
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
+                  >
+                    {submitting ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" /> GUARDANDO...
+                      </>
+                    ) : mode === "create" ? (
+                      "REGISTRAR"
+                    ) : (
+                      "ACTUALIZAR"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </Portal>
       )}
 
       {/* MODAL: CONFIRM DELETE */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-sm bg-[#161513] border-4 border-double border-[#9c2720] p-6 font-mono text-[#e0d8cc] shadow-2xl"
-          >
-            <div className="flex items-center gap-2 border-b-2 border-black pb-3 mb-4 text-[#9c2720]">
-              <Trash2 className="h-5 w-5" />
-              <h4 className="font-bold uppercase tracking-widest text-xs">CONFIRMAR ELIMINACIÓN</h4>
-            </div>
-            <p className="text-xs text-zinc-400 uppercase leading-relaxed mb-5">
-              Eliminar{" "}
-              <span className="font-bold text-[#e0d8cc]">{confirmDelete.name.toUpperCase()}</span>{" "}
-              del catálogo. Esta acción no se puede deshacer.
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-xs py-2 font-black transition"
-              >
-                [CANCELAR]
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 border-2 border-black uppercase text-xs py-2 hover:bg-[#801815] transition font-black"
-                style={{ backgroundColor: "#9c2720", color: "#fff" }}
-              >
-                {deleting ? "ELIMINANDO..." : "CONFIRMAR"}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+        <Portal>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-sm bg-[#161513] border-4 border-double border-[#9c2720] p-6 font-mono text-[#e0d8cc] shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-2 border-b-2 border-black pb-3 mb-4 text-[#9c2720]">
+                <Trash2 className="h-5 w-5" />
+                <h4 className="font-bold uppercase tracking-widest text-xs">
+                  CONFIRMAR ELIMINACIÓN
+                </h4>
+              </div>
+              <p className="text-xs text-zinc-400 uppercase leading-relaxed mb-5">
+                Eliminar{" "}
+                <span className="font-bold text-[#e0d8cc]">{confirmDelete.name.toUpperCase()}</span>{" "}
+                del catálogo. Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-xs py-2 font-black transition"
+                >
+                  [CANCELAR]
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 border-2 border-black uppercase text-xs py-2 hover:bg-[#801815] transition font-black"
+                  style={{ backgroundColor: "#9c2720", color: "#fff" }}
+                >
+                  {deleting ? "ELIMINANDO..." : "CONFIRMAR"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </Portal>
       )}
     </motion.div>
   )

@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 
+import { useLatestRef } from "./useLatestRef"
+import { CAMERA } from "../services/camp/layout"
+
 import type { RefObject } from "react"
 
 /** Estado de la cámara orbital (drag + WASD), compartido con el minimapa. */
@@ -24,9 +27,15 @@ interface UseThreeSceneOptions {
   onReady?: (ctx: ThreeContext) => void
   /** Se llama en cada frame tras actualizar la cámara y antes de renderizar. */
   onFrame?: (t: number, ctx: ThreeContext) => void
+  /**
+   * Detiene el loop de render mientras sea `true` (p. ej. cuando una ventana
+   * tapa la escena de fondo). Evita gastar GPU en frames que nadie ve y que,
+   * además, el navegador tendría que volver a desenfocar con `backdrop-filter`.
+   */
+  paused?: boolean
 }
 
-const SPEED = 0.18
+const SPEED = 0.35 // el campamento es grande: desplazamiento WASD más ágil
 const MOVE_KEYS = new Set([
   "w",
   "W",
@@ -53,18 +62,25 @@ const MOVE_KEYS = new Set([
  * se construye en `onReady` y se anima en `onFrame`.
  *
  * Devuelve un ref al `ThreeContext` (null hasta que la escena está lista), útil
- * para el raycaster y overlays como el minimapa.
+ * para el raycaster.
  */
 export function useThreeScene(
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  { onReady, onFrame }: UseThreeSceneOptions = {},
+  { onReady, onFrame, paused = false }: UseThreeSceneOptions = {},
 ) {
   const contextRef = useRef<ThreeContext | null>(null)
   // Mantenemos callbacks en refs para no re-montar la escena si cambian.
-  const onReadyRef = useRef(onReady)
-  const onFrameRef = useRef(onFrame)
-  onReadyRef.current = onReady
-  onFrameRef.current = onFrame
+  const onReadyRef = useLatestRef(onReady)
+  const onFrameRef = useLatestRef(onFrame)
+  const pausedRef = useRef(paused)
+  // Arranca/detiene el loop según pausa y visibilidad; lo define el efecto de
+  // montaje (null mientras no hay escena).
+  const syncLoopRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    pausedRef.current = paused
+    syncLoopRef.current?.()
+  }, [paused])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -87,7 +103,7 @@ export function useThreeScene(
     // on a scene with fog this dense.
     renderer.shadowMap.type = THREE.PCFShadowMap
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 0.88
+    renderer.toneMappingExposure = 1.05
 
     // ---- SCENE ----
     const scene = new THREE.Scene()
@@ -95,16 +111,17 @@ export function useThreeScene(
     scene.fog = new THREE.Fog(0x04080a, 28, 55)
 
     // ---- CAMERA ----
-    const camera = new THREE.PerspectiveCamera(58, initialW / initialH, 0.1, 150)
+    const camera = new THREE.PerspectiveCamera(58, initialW / initialH, 0.1, CAMERA.far)
     camera.position.set(0, 22, 20)
     camera.lookAt(0, 0, 0)
 
     const camState: CameraState = {
-      theta: Math.PI * 0.48,
-      phi: 1.28,
-      radius: 40,
-      target: new THREE.Vector3(0, 0.5, 13),
+      theta: CAMERA.initial.theta,
+      phi: CAMERA.initial.phi,
+      radius: CAMERA.initial.radius,
+      target: new THREE.Vector3(...CAMERA.initial.target),
     }
+    const B = CAMERA.bounds
 
     const ctx: ThreeContext = { scene, camera, renderer, camState }
     contextRef.current = ctx
@@ -131,7 +148,10 @@ export function useThreeScene(
       prevM = { x: e.clientX, y: e.clientY }
     }
     const onWheel = (e: WheelEvent) => {
-      camState.radius = Math.max(8, Math.min(54, camState.radius + e.deltaY * 0.04))
+      camState.radius = Math.max(
+        B.minRadius,
+        Math.min(B.maxRadius, camState.radius + e.deltaY * 0.06),
+      )
       e.preventDefault()
     }
     const onKeyDown = (e: KeyboardEvent) => {
@@ -164,7 +184,10 @@ export function useThreeScene(
       if (e.touches.length === 2 && pinch0) {
         const d = e.touches
         const dist = Math.hypot(d[0].clientX - d[1].clientX, d[0].clientY - d[1].clientY)
-        camState.radius = Math.max(5, Math.min(60, camState.radius * (pinch0 / dist)))
+        camState.radius = Math.max(
+          B.minRadius,
+          Math.min(B.maxRadius, camState.radius * (pinch0 / dist)),
+        )
         pinch0 = dist
       }
       e.preventDefault()
@@ -198,16 +221,15 @@ export function useThreeScene(
     window.addEventListener("resize", resize)
 
     // ---- LOOP ----
-    // Use actual RAF timestamp (ms → s) so animations run at correct speed
-    // regardless of monitor refresh rate (60 / 120 / 144 Hz).
-    // Movement speed is normalised by delta so WASD feels identical at any Hz.
-    let rafId = 0
+    // renderer.setAnimationLoop entrega el timestamp del frame (ms → s) para que
+    // las animaciones vayan a la misma velocidad a 60 / 120 / 144 Hz; el
+    // movimiento WASD se normaliza por delta por la misma razón.
+    let running = false
     let lastTs = -1
     const fw = new THREE.Vector3()
     const rt = new THREE.Vector3()
 
-    const loop = (timestamp: DOMHighResTimeStamp) => {
-      rafId = requestAnimationFrame(loop)
+    const frame = (timestamp: DOMHighResTimeStamp) => {
       const t = timestamp * 0.001 // seconds, monotonically increasing
       const dt = lastTs < 0 ? 0.016 : Math.min(timestamp * 0.001 - lastTs, 0.05)
       lastTs = t
@@ -221,11 +243,11 @@ export function useThreeScene(
       if (keys["a"] || keys["A"] || keys["ArrowLeft"]) camState.target.addScaledVector(rt, -move)
       if (keys["d"] || keys["D"] || keys["ArrowRight"]) camState.target.addScaledVector(rt, move)
       if (keys["q"] || keys["Q"])
-        camState.radius = Math.max(8, camState.radius - 0.25 * (dt / 0.016))
+        camState.radius = Math.max(B.minRadius, camState.radius - 0.4 * (dt / 0.016))
       if (keys["e"] || keys["E"])
-        camState.radius = Math.min(54, camState.radius + 0.25 * (dt / 0.016))
-      camState.target.x = Math.max(-32, Math.min(32, camState.target.x))
-      camState.target.z = Math.max(-24, Math.min(24, camState.target.z))
+        camState.radius = Math.min(B.maxRadius, camState.radius + 0.4 * (dt / 0.016))
+      camState.target.x = Math.max(B.minX, Math.min(B.maxX, camState.target.x))
+      camState.target.z = Math.max(B.minZ, Math.min(B.maxZ, camState.target.z))
 
       camera.position.x =
         camState.target.x + camState.radius * Math.sin(camState.phi) * Math.cos(camState.theta)
@@ -238,24 +260,28 @@ export function useThreeScene(
       renderer.render(scene, camera)
     }
 
-    // ---- VISIBILITY — pause RAF when tab is hidden to save GPU/battery ----
-    const onVisibility = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(rafId)
-        rafId = 0
-        lastTs = -1 // reset so next frame doesn't spike dt
-      } else if (rafId === 0) {
-        rafId = requestAnimationFrame(loop)
-      }
+    // Sólo se renderiza con la pestaña visible y sin pausa (una ventana encima).
+    const syncLoop = () => {
+      const shouldRun = !document.hidden && !pausedRef.current
+      if (shouldRun === running) return
+      running = shouldRun
+      lastTs = -1 // al reanudar, el primer frame no debe ver un salto de dt
+      renderer.setAnimationLoop(shouldRun ? frame : null)
     }
-    document.addEventListener("visibilitychange", onVisibility)
+    syncLoopRef.current = syncLoop
+    document.addEventListener("visibilitychange", syncLoop)
 
-    rafId = requestAnimationFrame(loop)
+    // Siempre se dibuja un primer frame (aunque arranque en pausa) para que la
+    // escena no aparezca negra al quitar la pausa.
+    frame(performance.now())
+    lastTs = -1
+    syncLoop()
 
     // ---- CLEANUP ----
     return () => {
-      cancelAnimationFrame(rafId)
-      document.removeEventListener("visibilitychange", onVisibility)
+      renderer.setAnimationLoop(null)
+      syncLoopRef.current = null
+      document.removeEventListener("visibilitychange", syncLoop)
       resizeObserver.disconnect()
       window.removeEventListener("resize", resize)
       canvas.removeEventListener("mousedown", onMouseDown)
@@ -270,7 +296,7 @@ export function useThreeScene(
       renderer.dispose()
       contextRef.current = null
     }
-  }, [canvasRef])
+  }, [canvasRef, onReadyRef, onFrameRef])
 
   return contextRef
 }

@@ -166,7 +166,7 @@ describe("ExplorationsView Component", () => {
   })
 
   it("handles creating a new expedition with validation", async () => {
-    const { container } = render(
+    const { baseElement } = render(
       <ExplorationsView
         explorations={mockExplorations}
         activePersons={mockPersons}
@@ -205,7 +205,7 @@ describe("ExplorationsView Component", () => {
     fireEvent.click(joelCheckbox)
 
     // Trigger resource checks (Comida has max 5, let's provision 10)
-    const numberInputs = container.querySelectorAll("input[type='number']")
+    const numberInputs = baseElement.querySelectorAll("input[type='number']")
     const foodInput = numberInputs[2] as HTMLInputElement
     fireEvent.change(foodInput, { target: { value: "10" } })
 
@@ -305,7 +305,7 @@ describe("ExplorationsView Component", () => {
   })
 
   it("handles various interactive callbacks in new/return modals", async () => {
-    const { container } = render(
+    const { baseElement } = render(
       <ExplorationsView
         explorations={mockExplorations}
         activePersons={mockPersons}
@@ -338,7 +338,7 @@ describe("ExplorationsView Component", () => {
     fireEvent.keyDown(joelDiv, { key: "Enter" })
 
     // Provision stocks inputs (food and water)
-    const numberInputs = container.querySelectorAll("input[type='number']")
+    const numberInputs = baseElement.querySelectorAll("input[type='number']")
     const foodInput = numberInputs[2] as HTMLInputElement
     const waterInput = numberInputs[3] as HTMLInputElement
 
@@ -361,7 +361,7 @@ describe("ExplorationsView Component", () => {
     expect(screen.getByText(/hoja de registro de retorno/i)).toBeInTheDocument()
 
     // Modify salvaged quantities
-    const returnNumberInputs = container.querySelectorAll("input[type='number']")
+    const returnNumberInputs = baseElement.querySelectorAll("input[type='number']")
     const salvageAguaInput = returnNumberInputs[0] as HTMLInputElement
     fireEvent.change(salvageAguaInput, { target: { value: "25" } })
 
@@ -380,7 +380,7 @@ describe("ExplorationsView Component", () => {
       response: { data: { message: ["Backend Validation Error"] } },
     })
 
-    const { container } = render(
+    const { baseElement } = render(
       <ExplorationsView
         explorations={mockExplorations}
         activePersons={mockPersons}
@@ -411,7 +411,7 @@ describe("ExplorationsView Component", () => {
     fireEvent.click(joelCheckbox)
 
     // Adjust food supply to avoid insufficient stocks validation error
-    const numberInputs = container.querySelectorAll("input[type='number']")
+    const numberInputs = baseElement.querySelectorAll("input[type='number']")
     const foodInput = numberInputs[2] as HTMLInputElement
     fireEvent.change(foodInput, { target: { value: "2" } })
 
@@ -452,7 +452,7 @@ describe("ExplorationsView Component", () => {
   })
 
   it("uses hardcoded fallback resource IDs when resources array is empty", async () => {
-    const { container } = render(
+    const { baseElement } = render(
       <ExplorationsView
         explorations={[]}
         activePersons={mockPersons}
@@ -478,7 +478,7 @@ describe("ExplorationsView Component", () => {
 
     fireEvent.click(screen.getByText("Joel Miller").closest("div")!)
 
-    const numberInputs = container.querySelectorAll("input[type='number']")
+    const numberInputs = baseElement.querySelectorAll("input[type='number']")
     fireEvent.change(numberInputs[2] as HTMLInputElement, { target: { value: "10" } })
     fireEvent.change(numberInputs[3] as HTMLInputElement, { target: { value: "10" } })
 

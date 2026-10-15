@@ -63,6 +63,10 @@ vi.mock("framer-motion", () => {
   }
   return {
     motion,
+    // Variante de carga diferida (LazyMotion + m): mismo comportamiento que motion
+    m: motion,
+    LazyMotion: ({ children }: { children: ReactNode }) => children,
+    domAnimation: {},
     AnimatePresence: ({ children }: { children: ReactNode }) => children,
     LayoutGroup: ({ children }: { children: ReactNode }) => children,
     useMotionValue: makeMotionValue,

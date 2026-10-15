@@ -33,12 +33,6 @@ export function BadgeLogin({ onLogin, isProcessing, loginStatus }: BadgeLoginPro
     }
   }, [loginStatus])
 
-  // On a granted login, reveal the password so the operator's entered
-  // credentials are fully readable on the card before it crosses the gate.
-  useEffect(() => {
-    if (loginStatus === "granted") setShowPassword(true)
-  }, [loginStatus])
-
   const handleClick = () => {
     if (!isHanging) setIsHanging(true)
   }
@@ -146,7 +140,7 @@ export function BadgeLogin({ onLogin, isProcessing, loginStatus }: BadgeLoginPro
 
   return (
     <motion.div
-      className={`absolute top-0 z-30 origin-top flex flex-col items-center ${!isHanging ? "cursor-pointer" : ""} w-[90vw] sm:w-[420px] max-w-[420px]`}
+      className={`badge-login absolute top-0 z-30 origin-top flex flex-col items-center ${!isHanging ? "cursor-pointer" : ""} w-[90vw] sm:w-[420px] max-w-[420px]`}
       style={{
         left: "50%",
         perspective: "1200px",
@@ -197,7 +191,7 @@ export function BadgeLogin({ onLogin, isProcessing, loginStatus }: BadgeLoginPro
         <div
           className="relative w-full flex flex-col overflow-hidden bg-[#d8d3c5]"
           style={{
-            height: "580px",
+            minHeight: "580px",
             background: "radial-gradient(ellipse at center, #d8d3c5 0%, #b8b1a1 100%)", // Cleaner aged plastic
             boxShadow:
               "inset 0 0 40px rgba(50,40,30,0.4), inset 2px 2px 10px rgba(255,255,255,0.6), 0 0 0 1px #222",

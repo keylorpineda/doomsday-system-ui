@@ -11,6 +11,7 @@ import type {
   ResourceItem,
 } from "../types"
 
+import { Portal } from "@/components/ui/Portal"
 import { ExplorationZoneMap } from "@/features/map-test/components/ExplorationZoneMap"
 import { MapCoordPicker } from "@/features/map-test/components/MapCoordPicker"
 import { TransferRouteMap } from "@/features/map-test/components/TransferRouteMap"
@@ -506,393 +507,397 @@ export default function ExplorationsView({
       </div>
 
       {/* MODAL: ORGANIZAR NUEVA EXPLORACIÓN */}
-      <AnimatePresence>
-        {isNewModalOpen && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-zinc-950 border-4 border-[#c27c2f] max-w-2xl w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)] rounded-lg my-8"
-            >
-              <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
-                <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
-                  <Compass className="w-5 h-5" />
-                  CREAR HOJA DE MISIÓN EXCURSIONISTA
-                </h3>
-                <button
-                  onClick={() => setIsNewModalOpen(false)}
-                  className="text-zinc-400 hover:text-white cursor-pointer font-bold text-lg"
-                >
-                  [X]
-                </button>
-              </div>
-
-              {formError && (
-                <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
-                  <TriangleAlert className="w-4 h-4" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Name */}
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="exp-name"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      NOMBRE CLAVE DE LA OPERACIÓN
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      placeholder="EJ. BÚSQUEDA DE ANTÍXIDAS EN VALLE GRIS"
-                      value={newExpName}
-                      onChange={(e) => setNewExpName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  {/* Dest */}
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="exp-dest"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      DESCRIPCIÓN DEL DESTINO ESTABLECIDO
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      placeholder="EJ. HOSPITAL UNIVERSITARIO, PISOS INFERIORES"
-                      value={newExpDest}
-                      onChange={(e) => setNewExpDest(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* MAPA: ZONA OBJETIVO */}
-                <div>
-                  <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-amber-500" />
-                    MARCAR ZONA EN EL MAPA (OPCIONAL)
-                  </div>
-                  <div
-                    style={{
-                      height: 260,
-                      border: "1px solid rgba(194,124,47,0.35)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <MapCoordPicker
-                      lat={destLat}
-                      lng={destLng}
-                      onChange={(lat, lng) => {
-                        setDestLat(lat)
-                        setDestLng(lng)
-                      }}
-                    />
-                  </div>
-                  {destLat != null && destLng != null ? (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-amber-500 font-mono">
-                        ◉ COORDENADAS: {destLat.toFixed(5)}, {destLng.toFixed(5)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDestLat(null)
-                          setDestLng(null)
-                        }}
-                        className="text-[9px] text-zinc-500 hover:text-red-400 font-mono cursor-pointer"
-                      >
-                        [LIMPIAR]
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-[9px] text-zinc-600 font-mono mt-1">
-                      Haz clic en el mapa para marcar la zona de exploración
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {/* Est days */}
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="exp-days"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      DÍAS ESTIMA DE VIAJE
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      min={1}
-                      max={15}
-                      value={newExpESTDays}
-                      onChange={(e) => setNewExpESTDays(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  {/* Grace days */}
-                  <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="exp-grace-days"
-                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                    >
-                      DÍAS DE GRACIA ADICIONAL
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
-                      min={0}
-                      max={7}
-                      value={newExpGraceDays}
-                      onChange={(e) => setNewExpGraceDays(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  {/* Date mockup display info */}
-                  <div className="col-span-2 md:col-span-1 flex flex-col gap-1 justify-end">
-                    <div className="text-[9px] bg-zinc-900 border border-zinc-800 p-2 text-zinc-400 rounded leading-4 uppercase">
-                      PARTIDA: <span className="text-white font-bold">INMEDIATA</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SELECTOR PERSONAS INTEGRANTES */}
-                <div>
-                  <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2">
-                    SELECCIÓN DE CONTINGENTES DISPONIBLES (PRIMERO SERÁ EL LÍDER)
-                  </div>
-                  {activePersons.length === 0 ? (
-                    <div className="p-3 bg-zinc-900 text-zinc-500 text-center text-xs uppercase border border-dashed border-zinc-800 rounded">
-                      — NO HAY DISPONIBILIDAD DE TRABAJADORES SANO EN ESTE MOMENTO —
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-black/40 border border-zinc-900 rounded">
-                      {activePersons.map((p) => {
-                        const canExplore = p.profession?.can_explore ?? false
-                        const isSelected = selectedPeople.includes(p.id)
-                        return (
-                          <div
-                            key={p.id}
-                            role={canExplore ? "button" : "presentation"}
-                            tabIndex={canExplore ? 0 : -1}
-                            onClick={() => canExplore && togglePersonSelection(p.id)}
-                            onKeyDown={(e) =>
-                              canExplore && e.key === "Enter" && togglePersonSelection(p.id)
-                            }
-                            className={`p-2 rounded border transition-colors flex justify-between items-center ${
-                              !canExplore
-                                ? "bg-red-950/20 border-red-900/30 text-zinc-600 cursor-not-allowed opacity-60"
-                                : isSelected
-                                  ? "bg-amber-950/40 border-amber-500 text-white cursor-pointer"
-                                  : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                            }`}
-                          >
-                            <div className="text-left">
-                              <span className="font-bold text-xs block uppercase flex items-center gap-1.5">
-                                {p.first_name} {p.last_name}
-                                {!canExplore && (
-                                  <span className="text-[8px] bg-red-900/50 text-red-300 px-1 rounded-sm tracking-tighter">
-                                    NO APTO PARA ZONA
-                                  </span>
-                                )}
-                              </span>
-                              <span
-                                className={`text-[9px] block uppercase font-mono tracking-widest ${!canExplore ? "text-red-900/50" : "text-zinc-400"}`}
-                              >
-                                {p.profession?.name ?? "Desconocida"} • XP: {p.experience_points} (
-                                {p.expeditionsSurvived} EXT)
-                              </span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              disabled={!canExplore}
-                              readOnly
-                              className={`accent-amber-500 pointer-events-none ${!canExplore ? "opacity-20" : ""}`}
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* EQUIPAMIENTOS REQUERIDOS (PROVISIONES DESDE EL REFUGIO) */}
-                <div>
-                  <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2">
-                    SUMINISTROS DE EXPEDICIÓN (EXTRAÍDOS DE BODEGA)
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 bg-zinc-900/60 p-3 rounded-md border border-zinc-800">
-                    <div>
-                      <span className="text-[10px] text-zinc-400 block mb-1">
-                        CANTIDAD COMIDA (RACIONES)
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors w-full"
-                        value={provisionStocks.food || 0}
-                        onChange={(e) => handleProvisionChange("food", Number(e.target.value))}
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-zinc-400 block mb-1">
-                        CANTIDAD AGUA (LITROS)
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors w-full"
-                        value={provisionStocks.water || 0}
-                        onChange={(e) => handleProvisionChange("water", Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Optional description */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="exp-notes"
-                    className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                  >
-                    COMENTARIO EXTRA / INTELIGENCIA OPERATIVA ADICIONAL
-                  </label>
-                  <textarea
-                    id="exp-notes"
-                    className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
-                    placeholder="E.G., NO DETENERSE EN CASO DE NIEBLA SÉPTICA..."
-                    value={newExpNotes}
-                    onChange={(e) => setNewExpNotes(e.target.value)}
-                  />
-                </div>
-
-                <div className="border-t border-zinc-800 pt-4 flex gap-4">
+      <Portal>
+        <AnimatePresence>
+          {isNewModalOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-zinc-950 border-4 border-[#c27c2f] max-w-2xl w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)] rounded-lg my-8 max-h-[calc(100dvh-2rem)] overflow-y-auto"
+              >
+                <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
+                  <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
+                    <Compass className="w-5 h-5" />
+                    CREAR HOJA DE MISIÓN EXCURSIONISTA
+                  </h3>
                   <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 vintage-btn bg-[#3b4d3e] text-white py-2 font-bold cursor-pointer"
-                  >
-                    {isSubmitting ? "REGISTRANDO HOJA..." : "REGISTRAR PLAN EN CENTRAL"}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setIsNewModalOpen(false)}
-                    className="vintage-btn bg-zinc-800 text-zinc-300 py-2 hover:bg-zinc-700 cursor-pointer"
+                    className="text-zinc-400 hover:text-white cursor-pointer font-bold text-lg"
                   >
-                    RETORNAR
+                    [X]
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
-      {/* MODAL: REGISTRAR RETORNO DE LA EXPEDICIÓN CON MATERIALES RESCATADOS */}
-      <AnimatePresence>
-        {isReturnModalOpen && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-zinc-950 border-4 border-[#4c6351] max-w-lg w-full p-6 text-white font-mono shadow-[0_0_24px_rgba(76,99,81,0.25)] rounded-lg"
-            >
-              <div className="border-b-2 border-[#4c6351] pb-3 mb-4 flex justify-between items-center">
-                <h3 className="font-typewriter text-md text-[#4c6351] font-bold tracking-widest flex items-center gap-2">
-                  <Archive className="w-5 h-5" />
-                  HOJA DE REGISTRO DE RETORNO Y EXCLUSIÓN DE ZONA
-                </h3>
-                <button
-                  onClick={() => setIsReturnModalOpen(false)}
-                  className="text-zinc-400 hover:text-white cursor-pointer font-bold"
-                >
-                  [X]
-                </button>
-              </div>
+                {formError && (
+                  <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
+                    <TriangleAlert className="w-4 h-4" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
-              <form onSubmit={handleReturnSubmit} className="space-y-4">
-                <p className="text-[11px] text-zinc-400 uppercase leading-4 border-b border-zinc-900 pb-2">
-                  INDIQUE TODOS LOS ELEMENTOS LOGÍSTICOS RECUPERADOS EN LA ZONA MUERTA POR EL EQUIPO
-                  DE COMBATE. ESTAS CANTIDADES SE AÑADIRÁN DINÁMICAMENTE A LA DESPENSA EN EL BÚNKER
-                  ALFA.
-                </p>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Name */}
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="exp-name"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        NOMBRE CLAVE DE LA OPERACIÓN
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        placeholder="EJ. BÚSQUEDA DE ANTÍXIDAS EN VALLE GRIS"
+                        value={newExpName}
+                        onChange={(e) => setNewExpName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    {/* Dest */}
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="exp-dest"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        DESCRIPCIÓN DEL DESTINO ESTABLECIDO
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        placeholder="EJ. HOSPITAL UNIVERSITARIO, PISOS INFERIORES"
+                        value={newExpDest}
+                        onChange={(e) => setNewExpDest(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
 
-                {/* Dynamic fields inputs for quantities found */}
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {resources.map((res) => (
+                  {/* MAPA: ZONA OBJETIVO */}
+                  <div>
+                    <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                      MARCAR ZONA EN EL MAPA (OPCIONAL)
+                    </div>
                     <div
-                      key={res.id}
-                      className="flex justify-between items-center p-1.5 bg-zinc-900/60 border border-zinc-800 rounded"
+                      style={{
+                        height: 260,
+                        border: "1px solid rgba(194,124,47,0.35)",
+                        overflow: "hidden",
+                      }}
                     >
-                      <div className="text-left pl-1">
-                        <span className="text-xs font-bold uppercase block text-white">
-                          {res.name}
+                      <MapCoordPicker
+                        lat={destLat}
+                        lng={destLng}
+                        onChange={(lat, lng) => {
+                          setDestLat(lat)
+                          setDestLng(lng)
+                        }}
+                      />
+                    </div>
+                    {destLat != null && destLng != null ? (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px] text-amber-500 font-mono">
+                          ◉ COORDENADAS: {destLat.toFixed(5)}, {destLng.toFixed(5)}
                         </span>
-                        <span className="text-[9px] block text-zinc-500 font-mono">
-                          UNIDAD DE MEDIDA: {res.unit}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDestLat(null)
+                            setDestLng(null)
+                          }}
+                          className="text-[9px] text-zinc-500 hover:text-red-400 font-mono cursor-pointer"
+                        >
+                          [LIMPIAR]
+                        </button>
                       </div>
-                      <div className="w-28 flex items-center gap-1.5">
+                    ) : (
+                      <p className="text-[9px] text-zinc-600 font-mono mt-1">
+                        Haz clic en el mapa para marcar la zona de exploración
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Est days */}
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="exp-days"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        DÍAS ESTIMA DE VIAJE
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        min={1}
+                        max={15}
+                        value={newExpESTDays}
+                        onChange={(e) => setNewExpESTDays(Number(e.target.value))}
+                        required
+                      />
+                    </div>
+                    {/* Grace days */}
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor="exp-grace-days"
+                        className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                      >
+                        DÍAS DE GRACIA ADICIONAL
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors"
+                        min={0}
+                        max={7}
+                        value={newExpGraceDays}
+                        onChange={(e) => setNewExpGraceDays(Number(e.target.value))}
+                        required
+                      />
+                    </div>
+                    {/* Date mockup display info */}
+                    <div className="col-span-2 md:col-span-1 flex flex-col gap-1 justify-end">
+                      <div className="text-[9px] bg-zinc-900 border border-zinc-800 p-2 text-zinc-400 rounded leading-4 uppercase">
+                        PARTIDA: <span className="text-white font-bold">INMEDIATA</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SELECTOR PERSONAS INTEGRANTES */}
+                  <div>
+                    <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2">
+                      SELECCIÓN DE CONTINGENTES DISPONIBLES (PRIMERO SERÁ EL LÍDER)
+                    </div>
+                    {activePersons.length === 0 ? (
+                      <div className="p-3 bg-zinc-900 text-zinc-500 text-center text-xs uppercase border border-dashed border-zinc-800 rounded">
+                        — NO HAY DISPONIBILIDAD DE TRABAJADORES SANO EN ESTE MOMENTO —
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-black/40 border border-zinc-900 rounded">
+                        {activePersons.map((p) => {
+                          const canExplore = p.profession?.can_explore ?? false
+                          const isSelected = selectedPeople.includes(p.id)
+                          return (
+                            <div
+                              key={p.id}
+                              role={canExplore ? "button" : "presentation"}
+                              tabIndex={canExplore ? 0 : -1}
+                              onClick={() => canExplore && togglePersonSelection(p.id)}
+                              onKeyDown={(e) =>
+                                canExplore && e.key === "Enter" && togglePersonSelection(p.id)
+                              }
+                              className={`p-2 rounded border transition-colors flex justify-between items-center ${
+                                !canExplore
+                                  ? "bg-red-950/20 border-red-900/30 text-zinc-600 cursor-not-allowed opacity-60"
+                                  : isSelected
+                                    ? "bg-amber-950/40 border-amber-500 text-white cursor-pointer"
+                                    : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                              }`}
+                            >
+                              <div className="text-left">
+                                <span className="font-bold text-xs block uppercase flex items-center gap-1.5">
+                                  {p.first_name} {p.last_name}
+                                  {!canExplore && (
+                                    <span className="text-[8px] bg-red-900/50 text-red-300 px-1 rounded-sm tracking-tighter">
+                                      NO APTO PARA ZONA
+                                    </span>
+                                  )}
+                                </span>
+                                <span
+                                  className={`text-[9px] block uppercase font-mono tracking-widest ${!canExplore ? "text-red-900/50" : "text-zinc-400"}`}
+                                >
+                                  {p.profession?.name ?? "Desconocida"} • XP: {p.experience_points}{" "}
+                                  ({p.expeditionsSurvived} EXT)
+                                </span>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={!canExplore}
+                                readOnly
+                                className={`accent-amber-500 pointer-events-none ${!canExplore ? "opacity-20" : ""}`}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* EQUIPAMIENTOS REQUERIDOS (PROVISIONES DESDE EL REFUGIO) */}
+                  <div>
+                    <div className="text-[10px] text-[#ab9e8b] uppercase font-bold block mb-2">
+                      SUMINISTROS DE EXPEDICIÓN (EXTRAÍDOS DE BODEGA)
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 bg-zinc-900/60 p-3 rounded-md border border-zinc-800">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1">
+                          CANTIDAD COMIDA (RACIONES)
+                        </span>
                         <input
                           type="number"
-                          className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors text-right w-full"
                           min={0}
-                          value={salvagedResources[res.id] || 0}
-                          onChange={(e) => handleSalvageChange(res.id, Number(e.target.value))}
+                          className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors w-full"
+                          value={provisionStocks.food || 0}
+                          onChange={(e) => handleProvisionChange("food", Number(e.target.value))}
                         />
-                        <span className="text-[10px] text-zinc-400">{res.unit}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-zinc-400 block mb-1">
+                          CANTIDAD AGUA (LITROS)
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors w-full"
+                          value={provisionStocks.water || 0}
+                          onChange={(e) => handleProvisionChange("water", Number(e.target.value))}
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
 
-                {/* Return comments notes input */}
-                <div className="flex flex-col gap-1">
-                  <label
-                    htmlFor="exp-return-notes"
-                    className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                  >
-                    INFORME DEL LÍDER DE OPERACIÓN EN RETORNO
-                  </label>
-                  <textarea
-                    id="exp-return-notes"
-                    className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
-                    placeholder="EJ. EXPEDICIÓN ALTAMENTE RENTABLE. ENCONTRAMOS BOTELLAS SELLADAS EN BASE DAWNTECH..."
-                    value={returnNotes}
-                    onChange={(e) => setReturnNotes(e.target.value)}
-                  />
-                </div>
+                  {/* Optional description */}
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="exp-notes"
+                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                    >
+                      COMENTARIO EXTRA / INTELIGENCIA OPERATIVA ADICIONAL
+                    </label>
+                    <textarea
+                      id="exp-notes"
+                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
+                      placeholder="E.G., NO DETENERSE EN CASO DE NIEBLA SÉPTICA..."
+                      value={newExpNotes}
+                      onChange={(e) => setNewExpNotes(e.target.value)}
+                    />
+                  </div>
 
-                <div className="border-t border-zinc-900 pt-4 flex gap-4">
+                  <div className="border-t border-zinc-800 pt-4 flex gap-4">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 vintage-btn bg-[#3b4d3e] text-white py-2 font-bold cursor-pointer"
+                    >
+                      {isSubmitting ? "REGISTRANDO HOJA..." : "REGISTRAR PLAN EN CENTRAL"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewModalOpen(false)}
+                      className="vintage-btn bg-zinc-800 text-zinc-300 py-2 hover:bg-zinc-700 cursor-pointer"
+                    >
+                      RETORNAR
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </Portal>
+
+      {/* MODAL: REGISTRAR RETORNO DE LA EXPEDICIÓN CON MATERIALES RESCATADOS */}
+      <Portal>
+        <AnimatePresence>
+          {isReturnModalOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-zinc-950 border-4 border-[#4c6351] max-w-lg w-full p-6 text-white font-mono shadow-[0_0_24px_rgba(76,99,81,0.25)] rounded-lg max-h-[calc(100dvh-2rem)] overflow-y-auto"
+              >
+                <div className="border-b-2 border-[#4c6351] pb-3 mb-4 flex justify-between items-center">
+                  <h3 className="font-typewriter text-md text-[#4c6351] font-bold tracking-widest flex items-center gap-2">
+                    <Archive className="w-5 h-5" />
+                    HOJA DE REGISTRO DE RETORNO Y EXCLUSIÓN DE ZONA
+                  </h3>
                   <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 bg-[#4c6351] hover:bg-[#3b4d3e] text-white py-1.5 px-3 font-typewriter font-bold text-[10px] uppercase border border-black rounded shadow-[1px_1px_0_#000]"
-                  >
-                    {isSubmitting ? "INVENTARIANDO..." : "REGISTRAR INGRESO EN ALMACÉN"}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setIsReturnModalOpen(false)}
-                    className="vintage-btn bg-zinc-800 text-zinc-300 py-2 hover:bg-zinc-700 cursor-pointer"
+                    className="text-zinc-400 hover:text-white cursor-pointer font-bold"
                   >
-                    RETORNAR
+                    [X]
                   </button>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                <form onSubmit={handleReturnSubmit} className="space-y-4">
+                  <p className="text-[11px] text-zinc-400 uppercase leading-4 border-b border-zinc-900 pb-2">
+                    INDIQUE TODOS LOS ELEMENTOS LOGÍSTICOS RECUPERADOS EN LA ZONA MUERTA POR EL
+                    EQUIPO DE COMBATE. ESTAS CANTIDADES SE AÑADIRÁN DINÁMICAMENTE A LA DESPENSA EN
+                    EL BÚNKER ALFA.
+                  </p>
+
+                  {/* Dynamic fields inputs for quantities found */}
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {resources.map((res) => (
+                      <div
+                        key={res.id}
+                        className="flex justify-between items-center p-1.5 bg-zinc-900/60 border border-zinc-800 rounded"
+                      >
+                        <div className="text-left pl-1">
+                          <span className="text-xs font-bold uppercase block text-white">
+                            {res.name}
+                          </span>
+                          <span className="text-[9px] block text-zinc-500 font-mono">
+                            UNIDAD DE MEDIDA: {res.unit}
+                          </span>
+                        </div>
+                        <div className="w-28 flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors text-right w-full"
+                            min={0}
+                            value={salvagedResources[res.id] || 0}
+                            onChange={(e) => handleSalvageChange(res.id, Number(e.target.value))}
+                          />
+                          <span className="text-[10px] text-zinc-400">{res.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Return comments notes input */}
+                  <div className="flex flex-col gap-1">
+                    <label
+                      htmlFor="exp-return-notes"
+                      className="text-[10px] text-[#ab9e8b] uppercase font-bold"
+                    >
+                      INFORME DEL LÍDER DE OPERACIÓN EN RETORNO
+                    </label>
+                    <textarea
+                      id="exp-return-notes"
+                      className="w-full bg-[#111111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 rounded uppercase focus:outline-none focus:border-[#c27c2f] focus:ring-1 focus:ring-[#c27c2f] transition-colors h-14 resize-none"
+                      placeholder="EJ. EXPEDICIÓN ALTAMENTE RENTABLE. ENCONTRAMOS BOTELLAS SELLADAS EN BASE DAWNTECH..."
+                      value={returnNotes}
+                      onChange={(e) => setReturnNotes(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="border-t border-zinc-900 pt-4 flex gap-4">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-[#4c6351] hover:bg-[#3b4d3e] text-white py-1.5 px-3 font-typewriter font-bold text-[10px] uppercase border border-black rounded shadow-[1px_1px_0_#000]"
+                    >
+                      {isSubmitting ? "INVENTARIANDO..." : "REGISTRAR INGRESO EN ALMACÉN"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsReturnModalOpen(false)}
+                      className="vintage-btn bg-zinc-800 text-zinc-300 py-2 hover:bg-zinc-700 cursor-pointer"
+                    >
+                      RETORNAR
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

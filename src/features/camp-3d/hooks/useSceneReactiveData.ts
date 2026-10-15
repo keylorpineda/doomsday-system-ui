@@ -1,239 +1,138 @@
 import { useEffect, useRef } from "react"
 
+import { sourcesForRole, sourcesForTopic, SOURCES } from "./sceneSources"
+
+import type { CampTopic, SourceKey, SourceMemory } from "./sceneSources"
 import type { Camp3DRole, SceneHandles } from "../types/scene.types"
-import type * as THREE from "three"
+import type { RefObject } from "react"
 
-import { getPendingAdmissions } from "@/features/admissions/services/admissions.service"
-import { getDashboardMetrics } from "@/features/dashboard/services/dashboard.service"
-import { getExplorations } from "@/features/explorations/services/explorations.service"
-import { getInventory } from "@/features/inventory/services/inventory.service"
-import { getPersons } from "@/features/persons/services/persons.service"
-import { getCampTransfers } from "@/features/transfers/services/transfers.service"
-
-/** Polling interval in ms — 8 seconds keeps the scene alive without hammering the API. */
-const POLL_MS = 8_000
+import { useSocket } from "@/hooks/useSocket"
 
 /**
- * Endpoints que cada source reactivo consulta están protegidos por rol en el
- * backend. `worker` no tiene acceso a dashboard, admisiones, traslados ni al
- * listado de personas (devuelven 403); sí puede leer exploraciones e
- * inventario. El resto de roles puede consultar todo. Gateamos aquí para no
- * disparar requests que el backend va a rechazar (y ensucian la consola).
+ * Respaldo por si el WebSocket se cae o se pierde un evento. Antes se
+ * consultaban 6 endpoints cada 8 s; ahora los cambios llegan por `camp.updated`.
  */
-const isManagerRole = (role: Camp3DRole): boolean => role !== "worker"
+export const FALLBACK_REFRESH_MS = 60_000
+/** Agrupa ráfagas de eventos (p. ej. una llegada de traslado emite 3 temas). */
+export const EVENT_DEBOUNCE_MS = 400
+
+interface CampUpdatedEvent {
+  campId: number | string
+  topic: CampTopic
+}
 
 /**
- * Reactive data bridge: polls backend endpoints and drives the 3D scene's
- * visual cues (lights, colors, animations) based on real camp state.
+ * Puente de datos reactivos: refleja el estado real del campamento en la
+ * escena 3D (luces, colores, animaciones).
  *
- * Consumes the `reactiveRefs` + animation functions exposed by `SceneHandles`.
- * Safe to call before the scene is ready — it no-ops until `handles` is set.
+ * - Carga todo una vez al montar.
+ * - Después sólo refresca el tema que el backend avisa por WebSocket
+ *   (`camp.updated`), con un respaldo cada minuto.
+ * - No consulta nada mientras la escena está pausada o la pestaña oculta, y se
+ *   pone al día al volver.
  */
 export function useSceneReactiveData(
   campId: string,
-  handlesRef: React.RefObject<SceneHandles | null>,
+  handlesRef: RefObject<SceneHandles | null>,
   role: Camp3DRole,
+  paused = false,
 ) {
-  // Track previous state to avoid re-triggering animations.
-  const prevExploActive = useRef(false)
-  const prevTransferActive = useRef(false)
+  const socket = useSocket()
+  const memory = useRef<SourceMemory>({ explorationActive: false, transferInTransit: false })
+  const pausedRef = useRef(paused)
+  const staleRef = useRef(new Set<SourceKey>())
+  const flushRef = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     if (!campId) return
-
     let cancelled = false
+    const allowed = new Set(sourcesForRole(role))
+    const pending = new Set<SourceKey>()
+    let debounce: number | null = null
 
-    const poll = async () => {
+    const run = async (keys: Iterable<SourceKey>) => {
       const handles = handlesRef.current
-      if (!handles || cancelled) return
-
-      const refs = handles.reactiveRefs
-
-      // worker solo puede consultar exploraciones e inventario; el resto de
-      // sources devuelven 403 para ese rol, así que ni los pedimos.
-      const canPollManagerData = isManagerRole(role)
-
-      // ---- 1. DASHBOARD → Cuartel General (danger_level) ----
-      // worker no tiene acceso (403); deja la bandera/luz en su estado default.
-      if (canPollManagerData)
+      if (!handles) return
+      for (const key of keys) {
+        if (cancelled || !allowed.has(key)) continue
         try {
-          const metrics = await getDashboardMetrics(campId)
-          // Derive danger_level heuristic: critical resources or high unavailable people
-          const criticalResources = metrics.warehouse?.resources_with_alerts ?? 0
-          const occupancy = metrics.camp?.occupancy_rate ?? 0
-          const unavailable = metrics.camp?.unavailable_people ?? 0
-          const total = metrics.camp?.total_people ?? 1
-
-          let dangerLevel: "critical" | "high" | "low" = "low"
-          if (criticalResources >= 3 || occupancy > 95) dangerLevel = "critical"
-          else if (criticalResources >= 1 || unavailable / total > 0.3) dangerLevel = "high"
-
-          // Flag color: CRITICAL → red, else blue (original)
-          const flagMat = refs.hqFlag.material as THREE.MeshStandardMaterial
-          if (dangerLevel === "critical") {
-            flagMat.color.setHex(0xff1100)
-            flagMat.emissive.setHex(0xff1100)
-            flagMat.emissiveIntensity = 0.6
-          } else {
-            flagMat.color.setHex(0x223388)
-            flagMat.emissive.setHex(0x112266)
-            flagMat.emissiveIntensity = 0.1
-          }
-
-          // Interior light: HIGH → reduced intensity (flicker handled in animate loop);
-          // LOW → stable warm glow.
-          if (dangerLevel === "high") {
-            refs.hqInteriorLight.intensity = 1.2
-          } else if (dangerLevel === "critical") {
-            refs.hqInteriorLight.intensity = 0.6
-          } else {
-            refs.hqInteriorLight.intensity = 2.5
-          }
+          await SOURCES[key].refresh(campId, handles, memory.current)
         } catch {
-          /* Dashboard API may 404 on some roles — leave defaults */
+          // Un endpoint caído no debe romper la escena: se deja el estado previo.
         }
-
-      // ---- 2. ADMISSIONS → Garita del Guardia ----
-      // worker no tiene acceso (403); deja la lámpara en su estado default.
-      if (canPollManagerData)
-        try {
-          const admissions = await getPendingAdmissions({ campId })
-          const pendingCount = admissions.total ?? admissions.data?.length ?? 0
-
-          if (pendingCount > 0) {
-            // Red emergency lamp
-            refs.gateEmergencyLamp.color.setHex(0xff2200)
-            refs.gateEmergencyLamp.intensity = 3.0
-          } else {
-            // Green stable
-            refs.gateEmergencyLamp.color.setHex(0x44ff44)
-            refs.gateEmergencyLamp.intensity = 1.5
-          }
-        } catch {
-          /* silent */
-        }
-
-      // ---- 3. EXPLORATIONS → Torre de Vigilancia ----
-      try {
-        const explorations = await getExplorations({ campId })
-        // El backend solo usa scheduled|in_progress|completed|cancelled. Una
-        // exploración "activa" ya partió (in_progress). "Overdue" no es un
-        // status: se calcula si venció su plazo (estimated_days + grace_days).
-        const active = explorations.filter((e) => e.status === "in_progress")
-        const hasActive = active.length > 0
-        const now = Date.now()
-        const hasOverdue = active.some((e) => {
-          const deadline =
-            new Date(e.departure_date).getTime() +
-            (e.estimated_days + (e.grace_days ?? 0)) * 86_400_000
-          return Number.isFinite(deadline) && now > deadline
-        })
-
-        // El color lo fija el hook; posición/parpadeo del foco los aplica el
-        // loop animate según el modo (para no pelear con el barrido).
-        if (hasOverdue) {
-          handles.setWatchtowerMode("overdue")
-          refs.watchtowerSpot.color.setHex(0xff6600)
-        } else if (hasActive) {
-          handles.setWatchtowerMode("gate")
-          refs.watchtowerSpot.color.setHex(0xdde8ff)
-        } else {
-          handles.setWatchtowerMode("sweep")
-          refs.watchtowerSpot.color.setHex(0xdde8ff)
-        }
-
-        // Dispara la animación de salida solo en la transición false → true.
-        if (hasActive && !prevExploActive.current) {
-          handles.playExplorationAnimation()
-        }
-        prevExploActive.current = hasActive
-      } catch {
-        /* silent */
       }
-
-      // ---- 4. INVENTORY → Almacén + Depósito ----
-      try {
-        const inventory = await getInventory(campId)
-        const hasAlert = inventory.some((item) => item.alert_active)
-
-        // Fuel-specific check
-        const fuelItem = inventory.find(
-          (item) =>
-            item.resource?.category === "fuel" ||
-            item.resource?.name?.toLowerCase().includes("combustible"),
-        )
-        const fuelCritical = fuelItem && fuelItem.current_quantity < fuelItem.minimum_stock_required
-
-        // Red alert light on warehouse roof
-        refs.warehouseAlertLight.intensity = hasAlert ? 4.0 : 0
-
-        // Warehouse interior light: high inventory → warm glow
-        const totalQty = inventory.reduce((sum, i) => sum + i.current_quantity, 0)
-        const totalMin = inventory.reduce((sum, i) => sum + i.minimum_stock_required, 0)
-        const ratio = totalMin > 0 ? totalQty / totalMin : 1
-        if (ratio > 1.5) {
-          // Bonanza — extra warm
-          refs.warehouseLight.intensity = 5.0
-          refs.warehouseLight.color.setHex(0xffcc88)
-        } else {
-          refs.warehouseLight.intensity = 3.0
-          refs.warehouseLight.color.setHex(0xffcc88)
-        }
-
-        // Fuel tank visual feedback (handled via alert light color tint)
-        if (fuelCritical) {
-          refs.warehouseAlertLight.color.setHex(0xff6600)
-        } else if (hasAlert) {
-          refs.warehouseAlertLight.color.setHex(0xff2200)
-        }
-      } catch {
-        /* silent */
-      }
-
-      // ---- 5. TRANSFERS → Garaje ----
-      // worker no tiene acceso (403); el camión solo se anima para gestores.
-      if (canPollManagerData)
-        try {
-          const transfers = await getCampTransfers(campId)
-          // El camión sale físicamente cuando el traslado pasa a in_transit
-          // (pending → approved → in_transit → completed en el backend).
-          const hasInTransit = transfers.some((t) => t.status === "in_transit")
-
-          // Dispara la animación del camión solo en la transición false → true.
-          if (hasInTransit && !prevTransferActive.current) {
-            handles.playTransferAnimation()
-          }
-          prevTransferActive.current = hasInTransit
-        } catch {
-          /* silent */
-        }
-
-      // ---- 6. PERSONS → Apartamentos (ventanas iluminadas) ----
-      // worker no tiene acceso (403); deja las ventanas en su brillo default.
-      if (canPollManagerData)
-        try {
-          const persons = await getPersons({ campId, limit: 9999 })
-          const allPeople = persons.data ?? []
-          const total = allPeople.length || 1
-          const canWork = allPeople.filter((p) => p.can_work).length
-          const ratio = canWork / total
-
-          // emissiveIntensity 0.0–1.2 proportional to active worker ratio
-          refs.apartmentsLitWindows.emissiveIntensity = 0.1 + ratio * 1.1
-        } catch {
-          /* silent */
-        }
     }
 
-    // Initial poll
-    void poll()
+    /** Refresca ahora o, si la escena no se ve, lo deja marcado para después. */
+    const request = (keys: SourceKey[]) => {
+      if (pausedRef.current || document.hidden || !handlesRef.current) {
+        keys.forEach((k) => staleRef.current.add(k))
+        return
+      }
+      keys.forEach((k) => pending.add(k))
+      if (debounce !== null) return
+      debounce = window.setTimeout(() => {
+        debounce = null
+        const keysNow = [...pending]
+        pending.clear()
+        void run(keysNow)
+      }, EVENT_DEBOUNCE_MS)
+    }
 
-    // Recurring poll
-    const id = window.setInterval(() => void poll(), POLL_MS)
+    flushRef.current = () => {
+      if (staleRef.current.size === 0) return
+      const keys = [...staleRef.current]
+      staleRef.current.clear()
+      request(keys)
+    }
+
+    const all = sourcesForRole(role)
+    // La escena puede tardar en construirse: se marca todo como pendiente y se
+    // carga en cuanto haya handles (el primer frame dispara flush vía intervalo corto).
+    all.forEach((k) => staleRef.current.add(k))
+    const bootstrap = window.setInterval(() => {
+      if (!handlesRef.current) return
+      window.clearInterval(bootstrap)
+      flushRef.current()
+    }, 250)
+
+    const fallback = window.setInterval(() => request(all), FALLBACK_REFRESH_MS)
+    const onVisibility = () => {
+      if (!document.hidden) flushRef.current()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
 
     return () => {
       cancelled = true
-      window.clearInterval(id)
+      window.clearInterval(bootstrap)
+      window.clearInterval(fallback)
+      if (debounce !== null) window.clearTimeout(debounce)
+      document.removeEventListener("visibilitychange", onVisibility)
+      flushRef.current = () => undefined
     }
   }, [campId, handlesRef, role])
+
+  // Al quitar la pausa, ponerse al día con lo que cambió mientras no se veía.
+  useEffect(() => {
+    pausedRef.current = paused
+    if (!paused) flushRef.current()
+  }, [paused])
+
+  // Eventos del backend: unirse a la sala del campamento y refrescar por tema.
+  useEffect(() => {
+    if (!socket || !campId) return
+    const join = () => socket.emit("camp.join", { campId })
+    const onUpdate = (event: CampUpdatedEvent) => {
+      if (String(event.campId) !== String(campId)) return
+      sourcesForTopic(event.topic).forEach((k) => staleRef.current.add(k))
+      flushRef.current()
+    }
+    if (socket.connected) join()
+    socket.on("connect", join)
+    socket.on("camp.updated", onUpdate)
+    return () => {
+      socket.off("connect", join)
+      socket.off("camp.updated", onUpdate)
+    }
+  }, [socket, campId])
 }

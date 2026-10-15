@@ -6,6 +6,7 @@ import { useCamp } from "../context/CampContext"
 
 import type { AiAdmission } from "@/types/api.types"
 
+import { Portal } from "@/components/ui/Portal"
 import {
   archiveAdmission as archiveAdmissionApi,
   createAdmissionAccount,
@@ -1372,311 +1373,313 @@ export default function AdmissionsBook() {
       </div>
 
       {/* ── CAMP ASSIGNMENT MODAL ─────────────────────────────────── */}
-      <AnimatePresence>
-        {showCampModal && detailData && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0,0,0,0.85)",
-              zIndex: 9999,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: "20px",
-            }}
-          >
+      <Portal>
+        <AnimatePresence>
+          {showCampModal && detailData && (
             <motion.div
-              initial={{ scale: 0.92, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.92, y: 20 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               style={{
-                background: "#0e0d0c",
-                border: "2px solid #c27c2f",
-                color: "#fff",
-                fontFamily: "var(--font-mono)",
-                width: "100%",
-                maxWidth: "520px",
-                boxShadow: "0 0 40px rgba(194,124,47,0.2)",
-                borderRadius: "4px",
-                overflow: "hidden",
+                position: "fixed",
+                inset: 0,
+                backgroundColor: "rgba(0,0,0,0.85)",
+                zIndex: 9999,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "20px",
               }}
             >
-              {/* Header */}
-              <div
+              <motion.div
+                initial={{ scale: 0.92, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.92, y: 20 }}
                 style={{
-                  background: "#1a160f",
-                  borderBottom: "2px solid #c27c2f",
-                  padding: "16px 24px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  background: "#0e0d0c",
+                  border: "2px solid #c27c2f",
+                  color: "#fff",
+                  fontFamily: "var(--font-mono)",
+                  width: "100%",
+                  maxWidth: "520px",
+                  boxShadow: "0 0 40px rgba(194,124,47,0.2)",
+                  borderRadius: "4px",
+                  overflow: "hidden",
                 }}
               >
-                <div>
-                  <div
-                    style={{
-                      fontSize: "0.65rem",
-                      color: "#c27c2f",
-                      letterSpacing: "0.15em",
-                      marginBottom: "2px",
-                    }}
-                  >
-                    APROBACIÓN — {detailData.applicantName.toUpperCase()}
-                  </div>
-                  <h3
-                    style={{
-                      margin: 0,
-                      color: "#fca311",
-                      fontSize: "1rem",
-                      fontFamily: "var(--font-typewriter)",
-                    }}
-                  >
-                    ASIGNAR CAMPAMENTO DESTINO
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowCampModal(false)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "#888",
-                    fontSize: "1.2rem",
-                    cursor: "pointer",
-                    lineHeight: 1,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Score bar */}
-              <div
-                style={{
-                  padding: "12px 24px",
-                  background: "#161310",
-                  borderBottom: "1px solid #333",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.65rem",
-                    color: "#ab9e8b",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  Puntuación IA:
-                </span>
+                {/* Header */}
                 <div
                   style={{
-                    flex: 1,
-                    height: "6px",
-                    background: "#2a2520",
-                    borderRadius: "3px",
-                    overflow: "hidden",
+                    background: "#1a160f",
+                    borderBottom: "2px solid #c27c2f",
+                    padding: "16px 24px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${detailData.aiScore}%`,
-                      background:
-                        detailData.aiScore >= 70
-                          ? "#4c6351"
-                          : detailData.aiScore >= 50
-                            ? "#c27c2f"
-                            : "#9c2720",
-                      transition: "width 0.6s",
-                    }}
-                  />
-                </div>
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    fontWeight: "bold",
-                    color: detailData.aiScore >= 70 ? "#6abf7b" : "#fca311",
-                    minWidth: "36px",
-                    textAlign: "right",
-                  }}
-                >
-                  {detailData.aiScore}/100
-                </span>
-              </div>
-
-              {/* Camps list */}
-              <div style={{ padding: "16px 24px", maxHeight: "320px", overflowY: "auto" }}>
-                <p
-                  style={{
-                    fontSize: "0.65rem",
-                    color: "#ab9e8b",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    marginTop: 0,
-                    marginBottom: "12px",
-                  }}
-                >
-                  Seleccione el campamento de destino — el indicado es donde el solicitante aplicó
-                  originalmente:
-                </p>
-                {camps.map((camp) => {
-                  const isOriginal = String(camp.id) === String(detailData.campId)
-                  const isSelected = String(camp.id) === String(selectedCampId)
-                  // Compatibility: original camp = aiScore, others scale down slightly
-                  const compat = isOriginal
-                    ? detailData.aiScore
-                    : Math.max(30, Math.round(detailData.aiScore * 0.75))
-                  const compatColor =
-                    compat >= 70 ? "#6abf7b" : compat >= 50 ? "#fca311" : "#e06050"
-                  return (
+                  <div>
                     <div
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === "Enter" && setSelectedCampId(String(camp.id))}
-                      key={camp.id}
-                      onClick={() => setSelectedCampId(String(camp.id))}
                       style={{
-                        padding: "12px 14px",
-                        marginBottom: "8px",
-                        cursor: "pointer",
-                        borderRadius: "3px",
-                        border: isSelected ? "2px solid #c27c2f" : "1px solid #333",
-                        background: isSelected ? "#1e1710" : "#141210",
-                        transition: "all 0.15s",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
+                        fontSize: "0.65rem",
+                        color: "#c27c2f",
+                        letterSpacing: "0.15em",
+                        marginBottom: "2px",
                       }}
                     >
-                      <input
-                        type="radio"
-                        checked={isSelected}
-                        onChange={() => setSelectedCampId(String(camp.id))}
-                        style={{ accentColor: "#c27c2f" }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "4px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: "bold",
-                              fontSize: "0.85rem",
-                              color: isSelected ? "#fca311" : "#ddd",
-                            }}
-                          >
-                            {camp.name?.toUpperCase() ?? `CAMPAMENTO ${camp.id}`}
-                          </span>
-                          {isOriginal && (
-                            <span
-                              style={{
-                                fontSize: "0.6rem",
-                                background: "#c27c2f",
-                                color: "#000",
-                                padding: "1px 6px",
-                                borderRadius: "2px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              SOLICITADO
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      APROBACIÓN — {detailData.applicantName.toUpperCase()}
+                    </div>
+                    <h3
+                      style={{
+                        margin: 0,
+                        color: "#fca311",
+                        fontSize: "1rem",
+                        fontFamily: "var(--font-typewriter)",
+                      }}
+                    >
+                      ASIGNAR CAMPAMENTO DESTINO
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowCampModal(false)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#888",
+                      fontSize: "1.2rem",
+                      cursor: "pointer",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Score bar */}
+                <div
+                  style={{
+                    padding: "12px 24px",
+                    background: "#161310",
+                    borderBottom: "1px solid #333",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "#ab9e8b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    Puntuación IA:
+                  </span>
+                  <div
+                    style={{
+                      flex: 1,
+                      height: "6px",
+                      background: "#2a2520",
+                      borderRadius: "3px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${detailData.aiScore}%`,
+                        background:
+                          detailData.aiScore >= 70
+                            ? "#4c6351"
+                            : detailData.aiScore >= 50
+                              ? "#c27c2f"
+                              : "#9c2720",
+                        transition: "width 0.6s",
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "0.8rem",
+                      fontWeight: "bold",
+                      color: detailData.aiScore >= 70 ? "#6abf7b" : "#fca311",
+                      minWidth: "36px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {detailData.aiScore}/100
+                  </span>
+                </div>
+
+                {/* Camps list */}
+                <div style={{ padding: "16px 24px", maxHeight: "320px", overflowY: "auto" }}>
+                  <p
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "#ab9e8b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      marginTop: 0,
+                      marginBottom: "12px",
+                    }}
+                  >
+                    Seleccione el campamento de destino — el indicado es donde el solicitante aplicó
+                    originalmente:
+                  </p>
+                  {camps.map((camp) => {
+                    const isOriginal = String(camp.id) === String(detailData.campId)
+                    const isSelected = String(camp.id) === String(selectedCampId)
+                    // Compatibility: original camp = aiScore, others scale down slightly
+                    const compat = isOriginal
+                      ? detailData.aiScore
+                      : Math.max(30, Math.round(detailData.aiScore * 0.75))
+                    const compatColor =
+                      compat >= 70 ? "#6abf7b" : compat >= 50 ? "#fca311" : "#e06050"
+                    return (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === "Enter" && setSelectedCampId(String(camp.id))}
+                        key={camp.id}
+                        onClick={() => setSelectedCampId(String(camp.id))}
+                        style={{
+                          padding: "12px 14px",
+                          marginBottom: "8px",
+                          cursor: "pointer",
+                          borderRadius: "3px",
+                          border: isSelected ? "2px solid #c27c2f" : "1px solid #333",
+                          background: isSelected ? "#1e1710" : "#141210",
+                          transition: "all 0.15s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={isSelected}
+                          onChange={() => setSelectedCampId(String(camp.id))}
+                          style={{ accentColor: "#c27c2f" }}
+                        />
+                        <div style={{ flex: 1 }}>
                           <div
                             style={{
-                              flex: 1,
-                              height: "4px",
-                              background: "#2a2520",
-                              borderRadius: "2px",
-                              overflow: "hidden",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "4px",
                             }}
                           >
+                            <span
+                              style={{
+                                fontWeight: "bold",
+                                fontSize: "0.85rem",
+                                color: isSelected ? "#fca311" : "#ddd",
+                              }}
+                            >
+                              {camp.name?.toUpperCase() ?? `CAMPAMENTO ${camp.id}`}
+                            </span>
+                            {isOriginal && (
+                              <span
+                                style={{
+                                  fontSize: "0.6rem",
+                                  background: "#c27c2f",
+                                  color: "#000",
+                                  padding: "1px 6px",
+                                  borderRadius: "2px",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                SOLICITADO
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div
                               style={{
-                                height: "100%",
-                                width: `${compat}%`,
-                                background: compatColor,
+                                flex: 1,
+                                height: "4px",
+                                background: "#2a2520",
+                                borderRadius: "2px",
+                                overflow: "hidden",
                               }}
-                            />
+                            >
+                              <div
+                                style={{
+                                  height: "100%",
+                                  width: `${compat}%`,
+                                  background: compatColor,
+                                }}
+                              />
+                            </div>
+                            <span
+                              style={{
+                                fontSize: "0.7rem",
+                                color: compatColor,
+                                minWidth: "36px",
+                                textAlign: "right",
+                              }}
+                            >
+                              {compat}%
+                            </span>
                           </div>
-                          <span
-                            style={{
-                              fontSize: "0.7rem",
-                              color: compatColor,
-                              minWidth: "36px",
-                              textAlign: "right",
-                            }}
-                          >
-                            {compat}%
-                          </span>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
 
-              {/* Footer buttons */}
-              <div
-                style={{
-                  padding: "16px 24px",
-                  borderTop: "1px solid #333",
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <button
-                  onClick={() => {
-                    setShowCampModal(false)
-                    setDecision(null)
-                  }}
+                {/* Footer buttons */}
+                <div
                   style={{
-                    padding: "10px 20px",
-                    background: "transparent",
-                    color: "#aaa",
-                    border: "1px solid #555",
-                    cursor: "pointer",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.8rem",
+                    padding: "16px 24px",
+                    borderTop: "1px solid #333",
+                    display: "flex",
+                    gap: "12px",
+                    justifyContent: "flex-end",
                   }}
                 >
-                  CANCELAR
-                </button>
-                <button
-                  disabled={!selectedCampId}
-                  onClick={() => void handleAcceptConfirm()}
-                  style={{
-                    padding: "10px 24px",
-                    background: selectedCampId ? "#c27c2f" : "#2a2520",
-                    color: selectedCampId ? "#000" : "#555",
-                    border: "none",
-                    fontWeight: "bold",
-                    cursor: selectedCampId ? "pointer" : "not-allowed",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "0.85rem",
-                    borderRadius: "2px",
-                  }}
-                >
-                  CONFIRMAR INGRESO
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      setShowCampModal(false)
+                      setDecision(null)
+                    }}
+                    style={{
+                      padding: "10px 20px",
+                      background: "transparent",
+                      color: "#aaa",
+                      border: "1px solid #555",
+                      cursor: "pointer",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    CANCELAR
+                  </button>
+                  <button
+                    disabled={!selectedCampId}
+                    onClick={() => void handleAcceptConfirm()}
+                    style={{
+                      padding: "10px 24px",
+                      background: selectedCampId ? "#c27c2f" : "#2a2520",
+                      color: selectedCampId ? "#000" : "#555",
+                      border: "none",
+                      fontWeight: "bold",
+                      cursor: selectedCampId ? "pointer" : "not-allowed",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.85rem",
+                      borderRadius: "2px",
+                    }}
+                  >
+                    CONFIRMAR INGRESO
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

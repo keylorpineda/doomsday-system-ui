@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { Portal } from "@/components/ui/Portal"
 import {
   useAssignedResources,
   useMyBadges,
@@ -136,60 +137,63 @@ function BadgeAchievementModal({
   onClose: () => void
 }) {
   return (
-    <AnimatePresence>
-      {badge ? (
-        <motion.div
-          className="wv-achievement-overlay"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
+    // En portal: dentro de la ventana de sección quedaba recortado
+    <Portal>
+      <AnimatePresence>
+        {badge ? (
           <motion.div
-            className="wv-achievement-card"
-            initial={{ scale: 0.45, rotate: -12, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            exit={{ scale: 0.65, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 160, damping: 18 }}
-            onClick={(e) => e.stopPropagation()}
+            className="wv-achievement-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
           >
-            <span className="wv-achievement-corner top-left" />
-            <span className="wv-achievement-corner top-right" />
-            <span className="wv-achievement-corner bottom-left" />
-            <span className="wv-achievement-corner bottom-right" />
-
-            <div className="wv-achievement-tag">LOGRO DESBLOQUEADO</div>
             <motion.div
-              className="wv-achievement-medal-wrap"
-              animate={{
-                filter: [
-                  "drop-shadow(0 0 8px rgba(179,133,54,0.5))",
-                  "drop-shadow(0 0 24px rgba(179,133,54,0.9))",
-                  "drop-shadow(0 0 8px rgba(179,133,54,0.5))",
-                ],
-              }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+              className="wv-achievement-card"
+              initial={{ scale: 0.45, rotate: -12, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              exit={{ scale: 0.65, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 160, damping: 18 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <BadgeMedal imageUrl={badge.imageUrl} name={badge.name} />
+              <span className="wv-achievement-corner top-left" />
+              <span className="wv-achievement-corner top-right" />
+              <span className="wv-achievement-corner bottom-left" />
+              <span className="wv-achievement-corner bottom-right" />
+
+              <div className="wv-achievement-tag">LOGRO DESBLOQUEADO</div>
+              <motion.div
+                className="wv-achievement-medal-wrap"
+                animate={{
+                  filter: [
+                    "drop-shadow(0 0 8px rgba(179,133,54,0.5))",
+                    "drop-shadow(0 0 24px rgba(179,133,54,0.9))",
+                    "drop-shadow(0 0 8px rgba(179,133,54,0.5))",
+                  ],
+                }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <BadgeMedal imageUrl={badge.imageUrl} name={badge.name} />
+              </motion.div>
+              <div className="wv-achievement-title">{badge.name}</div>
+              <div className="wv-achievement-stars">
+                {"\u2605".repeat(Math.min(badge.rarity, 5))}
+                <span>{"\u2606".repeat(Math.max(5 - badge.rarity, 0))}</span>
+              </div>
+              <div className="wv-achievement-description">{badge.description}</div>
+              <div className="wv-achievement-meta">
+                {RARITY_LABELS[badge.rarity] ?? "COM\u00daN"}
+                {badge.tag ? ` / ${badge.tag}` : ""}
+                {badge.acquiredAt ? ` / ${String(badge.acquiredAt).split("T")[0]}` : ""}
+              </div>
+              <button type="button" className="wv-achievement-button" onClick={onClose}>
+                ACEPTAR
+              </button>
             </motion.div>
-            <div className="wv-achievement-title">{badge.name}</div>
-            <div className="wv-achievement-stars">
-              {"\u2605".repeat(Math.min(badge.rarity, 5))}
-              <span>{"\u2606".repeat(Math.max(5 - badge.rarity, 0))}</span>
-            </div>
-            <div className="wv-achievement-description">{badge.description}</div>
-            <div className="wv-achievement-meta">
-              {RARITY_LABELS[badge.rarity] ?? "COM\u00daN"}
-              {badge.tag ? ` / ${badge.tag}` : ""}
-              {badge.acquiredAt ? ` / ${String(badge.acquiredAt).split("T")[0]}` : ""}
-            </div>
-            <button type="button" className="wv-achievement-button" onClick={onClose}>
-              ACEPTAR
-            </button>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </Portal>
   )
 }
 

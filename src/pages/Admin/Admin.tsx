@@ -1,4 +1,3 @@
-import { X } from "lucide-react"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom"
 
@@ -17,7 +16,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext"
 import { CampProvider, useCamp } from "./context/CampContext"
 import { SessionProvider } from "./context/SessionContext"
 
+import { SectionWindow } from "@/components/layouts/SectionWindow"
 import AlertsBanner from "@/components/ui/AlertsBanner"
+import { useOpen3DRequest } from "@/features/camp-3d/hooks/useOpen3DRequest"
 import { useAlertSocket } from "@/hooks/useAlertSocket"
 import "./AdminTheme.css"
 import "./Admin.css"
@@ -38,7 +39,7 @@ const RequireAdmin = ({ children }: { children: React.ReactNode }) => {
 
 const AdminLayout = () => {
   const { logout } = useAuth()
-  const { activeCampId } = useCamp()
+  const { activeCampId, setActiveCampId } = useCamp()
   useAlertSocket(activeCampId)
   const navigate = useNavigate()
   const location = useLocation()
@@ -55,6 +56,13 @@ const AdminLayout = () => {
 
   // Cerrar una ventana vuelve a la vista del campamento 3D (la "base").
   const closeWindow = () => navigate("/admin/camp")
+
+  // "Entrar al 3D" desde el mapa táctico (o tras el login): cambia al campamento
+  // pedido y vuelve a la vista base, donde el campamento 3D es el fondo.
+  useOpen3DRequest((campId) => {
+    if (campId && campId !== activeCampId) setActiveCampId(campId)
+    navigate("/admin/camp")
+  })
 
   const WINDOW_TITLES: Record<string, string> = {
     dashboard: "TABLERO DE CONTROL",
@@ -90,7 +98,7 @@ const AdminLayout = () => {
   }, [])
 
   return (
-    <div className="h-screen max-h-screen bg-[#0d0c0b] text-[#e0d8cc] relative overflow-hidden font-mono flex flex-col">
+    <div className="app-enter h-screen max-h-screen bg-[#0d0c0b] text-[#e0d8cc] relative overflow-hidden font-mono flex flex-col">
       {/* SCANLINE OVERLAY */}
       <div
         className="absolute inset-0 pointer-events-none z-50 opacity-[0.035]"
@@ -115,6 +123,8 @@ const AdminLayout = () => {
                 key={activeCampId}
                 campId={activeCampId}
                 embedded
+                // Ventana de sección o mapa encima: la escena no se ve, no renderizar
+                paused={!isCampHome}
                 onClose={() => navigate("/admin/camp")}
               />
             </Suspense>
@@ -134,54 +144,26 @@ const AdminLayout = () => {
         </div>
 
         {/* Ventana emergente de la sección activa (sobre el campamento) */}
-        <div
-          className="absolute inset-0 z-30 flex items-stretch justify-center bg-black/70 backdrop-blur-[2px] md:p-6"
-          style={{ display: showWindow ? "flex" : "none" }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeWindow()
-          }}
+        <SectionWindow
+          open={showWindow}
+          title={windowTitle}
+          onClose={closeWindow}
+          bodyClassName="admin-route-container"
         >
-          <div className="relative flex flex-col w-full h-full md:max-w-6xl bg-[#0d0c0b] border-2 border-black shadow-[6px_6px_0px_#000000] overflow-hidden">
-            {/* Barra de título de la ventana */}
-            <div className="shrink-0 flex items-center justify-between bg-[#121110] border-b-2 border-black px-4 py-2.5 select-none">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9c2720] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#9c2720]" />
-                </span>
-                <span className="text-sm font-black text-[#df8120] uppercase tracking-widest truncate">
-                  {windowTitle}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={closeWindow}
-                title="CERRAR VENTANA"
-                className="flex items-center gap-2 px-3 py-1.5 border-2 border-black bg-[#9a9080] text-black hover:bg-red-700 hover:text-white transition-colors uppercase text-[11px] font-extrabold tracking-widest cursor-pointer"
-              >
-                <X className="w-4 h-4 shrink-0" />
-                <span className="hidden sm:inline">CERRAR</span>
-              </button>
-            </div>
-
-            {/* Cuerpo de la ventana */}
-            <div className="flex-1 min-h-0 overflow-y-auto admin-route-container">
-              <Routes>
-                <Route path="camp" element={null} />
-                <Route path="mapa" element={null} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="admissions" element={<AdmissionsBook />} />
-                <Route path="people" element={<People />} />
-                <Route path="camps" element={<Camps />} />
-                <Route path="explorations" element={<Explorations />} />
-                <Route path="resources" element={<Resources />} />
-                <Route path="transfers" element={<Transfers />} />
-                <Route path="profile" element={<AdminProfile />} />
-                <Route path="*" element={<Navigate to="camp" replace />} />
-              </Routes>
-            </div>
-          </div>
-        </div>
+          <Routes>
+            <Route path="camp" element={null} />
+            <Route path="mapa" element={null} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="admissions" element={<AdmissionsBook />} />
+            <Route path="people" element={<People />} />
+            <Route path="camps" element={<Camps />} />
+            <Route path="explorations" element={<Explorations />} />
+            <Route path="resources" element={<Resources />} />
+            <Route path="transfers" element={<Transfers />} />
+            <Route path="profile" element={<AdminProfile />} />
+            <Route path="*" element={<Navigate to="camp" replace />} />
+          </Routes>
+        </SectionWindow>
       </div>
 
       <AlertsBanner campId={activeCampId} />

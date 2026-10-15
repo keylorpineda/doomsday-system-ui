@@ -43,3 +43,6 @@ coverage/
 .impeccable
 PRODUCT.md
 DESIGN.md
+
+# Archivos temporales que Vite genera al empaquetar la config
+vite.config.ts.timestamp-*.mjs

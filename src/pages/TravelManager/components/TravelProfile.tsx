@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Award, FileText, Radio, Star, Trophy } from "lucide-react"
 import { useState } from "react"
 
+import { Portal } from "@/components/ui/Portal"
 import { getExplorations } from "@/features/explorations/services/explorations.service"
 import { getPersons } from "@/features/persons/services/persons.service"
 import { getCampTransfers } from "@/features/transfers/services/transfers.service"
@@ -173,177 +174,182 @@ function buildTrophies(s: TravelStats): TrophyDef[] {
 // ── Trophy modal ───────────────────────────────────────────────────────────────
 function TrophyModal({ trophy, onClose }: { trophy: TrophyDef | null; onClose: () => void }) {
   return (
-    <AnimatePresence>
-      {trophy && (
-        <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <div className="absolute inset-0 bg-black/80" />
+    <Portal>
+      <AnimatePresence>
+        {trophy && (
           <motion.div
-            initial={{ scale: 0.5, rotate: -10, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            exit={{ scale: 0.6, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 180, damping: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "relative",
-              zIndex: 1,
-              background: PAPER,
-              border: `3px solid ${INK}`,
-              boxShadow: SHADOW_L,
-              padding: "36px 32px",
-              maxWidth: 360,
-              width: "100%",
-              textAlign: "center",
-              color: INK,
-            }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
           >
-            <div
+            <div className="absolute inset-0 bg-black/80" />
+            <motion.div
+              initial={{ scale: 0.5, rotate: -10, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 180, damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                position: "absolute",
-                top: -10,
-                left: "50%",
-                transform: "translateX(-50%)",
-                background: "#ab9e8b",
-                width: 80,
-                height: 20,
-                border: `1px dashed ${INK}`,
-                opacity: 0.85,
-              }}
-            />
-            <button
-              onClick={onClose}
-              style={{
-                position: "absolute",
-                top: 10,
-                right: 10,
-                background: PAPER_D,
-                border: `1px solid ${INK}`,
-                cursor: "pointer",
-                padding: "2px 6px",
-                fontFamily: "monospace",
-                fontWeight: 900,
-                fontSize: "0.9rem",
+                position: "relative",
+                zIndex: 1,
+                background: PAPER,
+                border: `3px solid ${INK}`,
+                boxShadow: SHADOW_L,
+                padding: "36px 32px",
+                maxWidth: 360,
+                width: "100%",
+                // Nunca más alta que la pantalla: el contenido hace scroll
+                maxHeight: "calc(100dvh - 2rem)",
+                overflowY: "auto",
+                textAlign: "center",
+                color: INK,
               }}
             >
-              ✕
-            </button>
-            <div
-              style={{
-                fontSize: "3.5rem",
-                lineHeight: 1,
-                marginBottom: 14,
-                filter: trophy.unlocked ? "none" : "grayscale(1) opacity(0.35)",
-              }}
-            >
-              {trophy.icon}
-            </div>
-            <div
-              style={{
-                fontFamily: "monospace",
-                fontSize: "0.55rem",
-                color: PAPER_S,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                marginBottom: 6,
-              }}
-            >
-              {RARITY_LABEL[trophy.rarity]} · {trophy.unlocked ? "✓ DESBLOQUEADO" : "✗ BLOQUEADO"}
-            </div>
-            <div
-              style={{
-                fontFamily: "'Special Elite', monospace",
-                fontSize: "1.1rem",
-                fontWeight: 900,
-                textTransform: "uppercase",
-                letterSpacing: 2,
-                marginBottom: 12,
-                borderBottom: `1px dashed ${PAPER_S}`,
-                paddingBottom: 10,
-              }}
-            >
-              {trophy.name}
-            </div>
-            <div
-              style={{
-                fontFamily: "monospace",
-                fontSize: "0.72rem",
-                color: PAPER_S,
-                lineHeight: 1.6,
-                marginBottom: 14,
-              }}
-            >
-              {trophy.description}
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 14 }}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-4 h-4 ${i < trophy.rarity ? "fill-current" : ""}`}
-                  style={{ color: i < trophy.rarity ? PAPER_S : "#c5bfb4" }}
-                />
-              ))}
-            </div>
-            {!trophy.unlocked && trophy.progress !== undefined && (
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontFamily: "monospace",
-                    fontSize: "0.6rem",
-                    color: PAPER_S,
-                    textTransform: "uppercase",
-                    marginBottom: 5,
-                  }}
-                >
-                  <span>PROGRESO</span>
-                  <span>{trophy.progressLabel}</span>
-                </div>
-                <div
-                  style={{
-                    height: 6,
-                    background: PAPER_D,
-                    border: `1px solid ${INK}`,
-                    overflow: "hidden",
-                  }}
-                >
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${trophy.progress}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    style={{ height: "100%", background: PAPER_S }}
-                  />
-                </div>
+              <div
+                style={{
+                  position: "absolute",
+                  top: -10,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "#ab9e8b",
+                  width: 80,
+                  height: 20,
+                  border: `1px dashed ${INK}`,
+                  opacity: 0.85,
+                }}
+              />
+              <button
+                onClick={onClose}
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  background: PAPER_D,
+                  border: `1px solid ${INK}`,
+                  cursor: "pointer",
+                  padding: "2px 6px",
+                  fontFamily: "monospace",
+                  fontWeight: 900,
+                  fontSize: "0.9rem",
+                }}
+              >
+                ✕
+              </button>
+              <div
+                style={{
+                  fontSize: "3.5rem",
+                  lineHeight: 1,
+                  marginBottom: 14,
+                  filter: trophy.unlocked ? "none" : "grayscale(1) opacity(0.35)",
+                }}
+              >
+                {trophy.icon}
               </div>
-            )}
-            <button
-              onClick={onClose}
-              style={{
-                marginTop: 20,
-                background: INK,
-                color: PAPER,
-                border: `2px solid ${INK}`,
-                fontFamily: "'Special Elite', monospace",
-                fontWeight: 900,
-                fontSize: "0.75rem",
-                textTransform: "uppercase",
-                letterSpacing: 2,
-                padding: "8px 24px",
-                cursor: "pointer",
-                boxShadow: "2px 2px 0 #444",
-              }}
-            >
-              CERRAR
-            </button>
+              <div
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "0.55rem",
+                  color: PAPER_S,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                }}
+              >
+                {RARITY_LABEL[trophy.rarity]} · {trophy.unlocked ? "✓ DESBLOQUEADO" : "✗ BLOQUEADO"}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Special Elite', monospace",
+                  fontSize: "1.1rem",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
+                  marginBottom: 12,
+                  borderBottom: `1px dashed ${PAPER_S}`,
+                  paddingBottom: 10,
+                }}
+              >
+                {trophy.name}
+              </div>
+              <div
+                style={{
+                  fontFamily: "monospace",
+                  fontSize: "0.72rem",
+                  color: PAPER_S,
+                  lineHeight: 1.6,
+                  marginBottom: 14,
+                }}
+              >
+                {trophy.description}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 14 }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-4 h-4 ${i < trophy.rarity ? "fill-current" : ""}`}
+                    style={{ color: i < trophy.rarity ? PAPER_S : "#c5bfb4" }}
+                  />
+                ))}
+              </div>
+              {!trophy.unlocked && trophy.progress !== undefined && (
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontFamily: "monospace",
+                      fontSize: "0.6rem",
+                      color: PAPER_S,
+                      textTransform: "uppercase",
+                      marginBottom: 5,
+                    }}
+                  >
+                    <span>PROGRESO</span>
+                    <span>{trophy.progressLabel}</span>
+                  </div>
+                  <div
+                    style={{
+                      height: 6,
+                      background: PAPER_D,
+                      border: `1px solid ${INK}`,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${trophy.progress}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      style={{ height: "100%", background: PAPER_S }}
+                    />
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                style={{
+                  marginTop: 20,
+                  background: INK,
+                  color: PAPER,
+                  border: `2px solid ${INK}`,
+                  fontFamily: "'Special Elite', monospace",
+                  fontWeight: 900,
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
+                  padding: "8px 24px",
+                  cursor: "pointer",
+                  boxShadow: "2px 2px 0 #444",
+                }}
+              >
+                CERRAR
+              </button>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </Portal>
   )
 }
 

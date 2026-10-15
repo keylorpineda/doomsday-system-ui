@@ -37,6 +37,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // Los componentes con animaciones pesadas superan los 5 s por defecto
+    // cuando la suite completa corre en paralelo (local y en CI)
+    testTimeout: 15000,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,

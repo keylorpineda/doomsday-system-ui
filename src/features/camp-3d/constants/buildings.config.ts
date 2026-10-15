@@ -1,10 +1,18 @@
+import { TOOLTIP_ANCHORS } from "../services/camp/layout"
+
 import type { BuildingConfig } from "../types/scene.types"
+
+/** Posición del tooltip de cada edificio, tomada del plano maestro del campamento. */
+const anchor = (id: keyof typeof TOOLTIP_ANCHORS) => {
+  const [x, y, z] = TOOLTIP_ANCHORS[id]
+  return { x, y, z }
+}
 
 /**
  * Catálogo de edificios interactivos del campamento 3D (plan TLoU2).
  *
  * Cada `meshNames` referencia los nombres que el constructor de escena
- * (services/sceneBuilder.ts) asigna a los meshes principales. `requiredRoles`
+ * (services/camp/) asigna a los meshes principales. `requiredRoles`
  * y `reactiveData` los consumen los pasos de rol y de datos reactivos.
  *
  * Las rutas son las de la vista Admin; las variantes por rol (camp_leader,
@@ -20,7 +28,7 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/dashboard",
     requiredRoles: ["admin", "camp_leader"],
     reactiveData: null,
-    position3D: { x: 0, y: 2.25, z: -10 },
+    position3D: anchor("hq"),
   },
   {
     id: "gate",
@@ -29,7 +37,7 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/admissions",
     requiredRoles: ["admin", "camp_leader", "resource_manager"],
     reactiveData: "admissions_pending",
-    position3D: { x: -6, y: 1.25, z: 12.5 },
+    position3D: anchor("gate"),
   },
   {
     id: "barracks",
@@ -38,7 +46,7 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/people",
     requiredRoles: ["admin", "camp_leader"],
     reactiveData: null,
-    position3D: { x: 10, y: 3.75, z: -6 },
+    position3D: anchor("barracks"),
   },
   {
     id: "watchtower",
@@ -47,7 +55,7 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/explorations",
     requiredRoles: ["admin", "camp_leader", "travel_manager", "worker"],
     reactiveData: "exploration_active",
-    position3D: { x: -17, y: 5.9, z: 11 },
+    position3D: anchor("watchtower"),
   },
   {
     id: "warehouse",
@@ -56,7 +64,7 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/resources",
     requiredRoles: ["admin", "resource_manager", "camp_leader", "worker"],
     reactiveData: "inventory_alert",
-    position3D: { x: -13, y: 2, z: 4 },
+    position3D: anchor("warehouse"),
   },
   {
     id: "garage",
@@ -65,6 +73,6 @@ export const BUILDINGS: BuildingConfig[] = [
     route: "/admin/transfers",
     requiredRoles: ["admin", "travel_manager", "camp_leader"],
     reactiveData: "transfer_active",
-    position3D: { x: 13.5, y: 2, z: 8.5 },
+    position3D: anchor("garage"),
   },
 ]

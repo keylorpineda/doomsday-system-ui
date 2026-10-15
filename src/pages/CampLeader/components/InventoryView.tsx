@@ -92,20 +92,20 @@ export default function InventoryView({ inventory }: InventoryViewProps) {
           return (
             <div
               key={inv.resource_id}
-              className="bg-[#e8dcc8] border-2 border-black shadow-[5px_5px_0_#000] flex flex-col gap-5 p-6"
+              className="bg-[#e8dcc8] border-2 border-black shadow-[5px_5px_0_#000] flex flex-col gap-5 p-4 sm:p-6 min-w-0"
               style={{ borderLeft: `6px solid ${inv.alert_active ? "#9c2720" : "#4c6351"}` }}
             >
               {/* CABECERA */}
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-wrap justify-between items-start gap-2">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <div className="w-12 h-12 border-2 border-black flex items-center justify-center bg-black/10 shrink-0 text-2xl">
                     {CATEGORY_EMOJI[inv.resource.category] ?? "📦"}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="font-mono text-xs font-bold text-black/50 block uppercase tracking-wider">
                       {inv.resource.category}
                     </span>
-                    <h3 className="font-typewriter text-lg font-bold text-black uppercase leading-tight">
+                    <h3 className="font-typewriter text-lg font-bold text-black uppercase leading-tight break-words">
                       {inv.resource.name}
                     </h3>
                   </div>

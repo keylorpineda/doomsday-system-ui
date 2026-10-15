@@ -13,6 +13,7 @@ import { api } from "../config/api"
 
 import type { IntercampRequest } from "../types/api.types"
 
+import { Portal } from "@/components/ui/Portal"
 import { use3DStore } from "@/store/use3DStore"
 
 interface ManagerLogisticsProps {
@@ -714,121 +715,126 @@ export default function ManagerLogistics({
 
       {/* NEW REQUEST MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] relative shadow-2xl"
-          >
-            <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
-              <Truck className="h-8 w-8 animate-pulse text-[#c27c2f]" />
-              <h4 className="font-black uppercase tracking-widest text-lg md:text-xl">
-                SOLICITUD DE EXPEDICIÓN EXTRAORDINARIA
-              </h4>
-            </div>
+        <Portal>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] relative shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
+                <Truck className="h-8 w-8 animate-pulse text-[#c27c2f]" />
+                <h4 className="font-black uppercase tracking-widest text-lg md:text-xl">
+                  SOLICITUD DE EXPEDICIÓN EXTRAORDINARIA
+                </h4>
+              </div>
 
-            {modalError && (
-              <div className="mb-4 border-2 border-[#9c2720] bg-[#9c2720]/20 text-red-300 font-mono text-xs p-3 flex items-start gap-3">
-                <ShieldAlert className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
-                <div>
-                  <span className="font-bold uppercase">ORDEN RECHAZADA:</span> {modalError}
+              {modalError && (
+                <div className="mb-4 border-2 border-[#9c2720] bg-[#9c2720]/20 text-red-300 font-mono text-xs p-3 flex items-start gap-3">
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                  <div>
+                    <span className="font-bold uppercase">ORDEN RECHAZADA:</span> {modalError}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <form onSubmit={handleCreateRequest} className="space-y-6">
-              <div className="space-y-2">
-                <label
-                  htmlFor="targetCamp"
-                  className="text-sm text-zinc-500 uppercase font-black block"
-                >
-                  BÚNKER ORIGEN:
-                </label>
-                <select
-                  id="targetCamp"
-                  value={sourceBunker}
-                  onChange={(e) => setSourceBunker(e.target.value)}
-                  className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
-                >
-                  {bunkerList.map((b) => (
-                    <option key={b.id} value={b.id} className="bg-[#161513] text-[#e0d8cc]">
-                      {b.name.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <form onSubmit={handleCreateRequest} className="space-y-6">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="targetCamp"
+                    className="text-sm text-zinc-500 uppercase font-black block"
+                  >
+                    BÚNKER ORIGEN:
+                  </label>
+                  <select
+                    id="targetCamp"
+                    value={sourceBunker}
+                    onChange={(e) => setSourceBunker(e.target.value)}
+                    className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
+                  >
+                    {bunkerList.map((b) => (
+                      <option key={b.id} value={b.id} className="bg-[#161513] text-[#e0d8cc]">
+                        {b.name.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="resourceId"
-                  className="text-sm text-zinc-500 uppercase font-black block"
-                >
-                  RECURSO SOLICITADO:
-                </label>
-                <select
-                  id="resourceId"
-                  value={selectedResource}
-                  onChange={(e) => setSelectedResource(e.target.value)}
-                  className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
-                >
-                  {resourceTypes.map((r: any) => (
-                    <option key={r.id} value={r.id} className="bg-[#161513] text-[#e0d8cc]">
-                      {r.name?.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="resourceId"
+                    className="text-sm text-zinc-500 uppercase font-black block"
+                  >
+                    RECURSO SOLICITADO:
+                  </label>
+                  <select
+                    id="resourceId"
+                    value={selectedResource}
+                    onChange={(e) => setSelectedResource(e.target.value)}
+                    className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
+                  >
+                    {resourceTypes.map((r: any) => (
+                      <option key={r.id} value={r.id} className="bg-[#161513] text-[#e0d8cc]">
+                        {r.name?.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="space-y-2">
-                <div className="text-sm text-zinc-500 uppercase font-black block">CANTIDAD:</div>
-                <input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  value={requestAmount}
-                  onChange={(e) => {
-                    setRequestAmount(Number(e.target.value))
-                  }}
-                  className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-zinc-500 uppercase font-black block">CANTIDAD:</div>
+                  <input
+                    id="quantity"
+                    type="number"
+                    min="1"
+                    value={requestAmount}
+                    onChange={(e) => {
+                      setRequestAmount(Number(e.target.value))
+                    }}
+                    className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label htmlFor="notes" className="text-sm text-zinc-500 uppercase font-black block">
-                  MOTIVACIONES / JUSTIFICANTE LOGÍSTICO:
-                </label>
-                <textarea
-                  id="notes"
-                  value={requestNotes}
-                  onChange={(e) => setRequestNotes(e.target.value)}
-                  rows={3}
-                  placeholder="JUSTIFIQUE EL PROTOCOLO DE TRASLADO MRE..."
-                  className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase placeholder-zinc-600 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
-                />
-              </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="notes"
+                    className="text-sm text-zinc-500 uppercase font-black block"
+                  >
+                    MOTIVACIONES / JUSTIFICANTE LOGÍSTICO:
+                  </label>
+                  <textarea
+                    id="notes"
+                    value={requestNotes}
+                    onChange={(e) => setRequestNotes(e.target.value)}
+                    rows={3}
+                    placeholder="JUSTIFIQUE EL PROTOCOLO DE TRASLADO MRE..."
+                    className="w-full bg-[#2a2824] border-4 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-base font-black font-mono transition uppercase placeholder-zinc-600 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]"
+                  />
+                </div>
 
-              <div className="flex flex-col md:flex-row gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => onModalClose?.()}
-                  className="flex-1 border-2 border-black uppercase text-sm md:text-base py-3 md:py-4 font-black transition"
-                  style={{ backgroundColor: "#9c2720", color: "#ffffff" }}
-                >
-                  [CANCELAR]
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingRequest}
-                  className="flex-1 border-2 border-black uppercase text-sm md:text-base py-3 md:py-4 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
-                  style={{ backgroundColor: "#c27c2f", color: "#161513" }}
-                >
-                  {submittingRequest ? "EMITIENDO..." : "FIRMAR ORDEN"}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+                <div className="flex flex-col md:flex-row gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => onModalClose?.()}
+                    className="flex-1 border-2 border-black uppercase text-sm md:text-base py-3 md:py-4 font-black transition"
+                    style={{ backgroundColor: "#9c2720", color: "#ffffff" }}
+                  >
+                    [CANCELAR]
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingRequest}
+                    className="flex-1 border-2 border-black uppercase text-sm md:text-base py-3 md:py-4 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#c27c2f", color: "#161513" }}
+                  >
+                    {submittingRequest ? "EMITIENDO..." : "FIRMAR ORDEN"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </Portal>
       )}
     </motion.div>
   )

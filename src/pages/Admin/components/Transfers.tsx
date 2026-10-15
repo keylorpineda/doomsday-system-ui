@@ -8,6 +8,7 @@ import { useCamp } from "../context/CampContext"
 import type { ApprovalBody } from "@/features/transfers/services/transfers.service"
 import type { IntercampRequest } from "@/types/api.types"
 
+import { Portal } from "@/components/ui/Portal"
 import { TransferRouteMap } from "@/features/map-test/components/TransferRouteMap"
 import {
   approveOrRejectTransfer,
@@ -476,100 +477,102 @@ export default function Transfers() {
       )}
 
       {/* MODALES APROBAR / RECHAZAR */}
-      <AnimatePresence>
-        {(activeModal === "approve" || activeModal === "reject") && selectedTransfer ? (
-          <motion.div
-            key="action-modal"
-            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeModal}
-          >
+      <Portal>
+        <AnimatePresence>
+          {(activeModal === "approve" || activeModal === "reject") && selectedTransfer ? (
             <motion.div
-              className="bg-zinc-950 border-4 border-[#c27c2f] max-w-md w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)]"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
+              key="action-modal"
+              className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeModal}
             >
-              <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
-                <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
-                  <Truck className="w-5 h-5" />
-                  {activeModal === "approve" ? "APROBAR TRASLADO" : "RECHAZAR TRASLADO"}
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-zinc-400 hover:text-white cursor-pointer font-bold"
-                >
-                  [X]
-                </button>
-              </div>
-
-              <p className="font-mono text-xs text-zinc-400 uppercase mb-4">
-                {selectedTransfer.origin} → {selectedTransfer.dest}
-              </p>
-
-              {formError ? (
-                <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  {formError}
+              <motion.div
+                className="bg-zinc-950 border-4 border-[#c27c2f] max-w-md w-full p-6 text-white text-left font-mono shadow-[0_0_24px_rgba(194,124,47,0.25)] max-h-[calc(100dvh-2rem)] overflow-y-auto"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="border-b-2 border-[#c27c2f] pb-3 mb-4 flex justify-between items-center">
+                  <h3 className="font-typewriter text-md text-amber-500 font-bold tracking-widest flex items-center gap-2">
+                    <Truck className="w-5 h-5" />
+                    {activeModal === "approve" ? "APROBAR TRASLADO" : "RECHAZAR TRASLADO"}
+                  </h3>
+                  <button
+                    onClick={closeModal}
+                    className="text-zinc-400 hover:text-white cursor-pointer font-bold"
+                  >
+                    [X]
+                  </button>
                 </div>
-              ) : null}
 
-              <div className="flex flex-col gap-1 mb-5">
-                <label
-                  htmlFor="modal-notes"
-                  className="text-[10px] text-[#ab9e8b] uppercase font-bold"
-                >
-                  {activeModal === "approve"
-                    ? "NOTAS DE APROBACIÓN (opcional)"
-                    : "MOTIVO DE RECHAZO (opcional)"}
-                </label>
-                <textarea
-                  id="modal-notes"
-                  className="w-full bg-[#111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 focus:outline-none focus:border-[#c27c2f] h-20 resize-none"
-                  placeholder={
-                    activeModal === "approve"
-                      ? "Condiciones o comentarios..."
-                      : "Razón del rechazo..."
-                  }
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                />
-              </div>
+                <p className="font-mono text-xs text-zinc-400 uppercase mb-4">
+                  {selectedTransfer.origin} → {selectedTransfer.dest}
+                </p>
 
-              <div className="flex gap-3 border-t border-zinc-900 pt-4">
-                <button
-                  onClick={closeModal}
-                  className="bg-[#9a9080] hover:bg-[#ab9e8b] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer"
-                >
-                  CANCELAR
-                </button>
-                {activeModal === "approve" ? (
-                  <button
-                    onClick={() => void handleApprove()}
-                    disabled={isSaving}
-                    className="flex-1 bg-[#4c6351] hover:bg-[#3b4d3e] disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                {formError ? (
+                  <div className="bg-red-950/40 border-l-4 border-red-500 p-3 mb-4 text-red-400 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    {formError}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-1 mb-5">
+                  <label
+                    htmlFor="modal-notes"
+                    className="text-[10px] text-[#ab9e8b] uppercase font-bold"
                   >
-                    <Check className="w-4 h-4" />
-                    {isSaving ? "APROBANDO..." : "CONFIRMAR APROBACIÓN"}
-                  </button>
-                ) : (
+                    {activeModal === "approve"
+                      ? "NOTAS DE APROBACIÓN (opcional)"
+                      : "MOTIVO DE RECHAZO (opcional)"}
+                  </label>
+                  <textarea
+                    id="modal-notes"
+                    className="w-full bg-[#111]/90 border border-[#3b4d3e] text-white text-xs font-mono py-2 px-3 focus:outline-none focus:border-[#c27c2f] h-20 resize-none"
+                    placeholder={
+                      activeModal === "approve"
+                        ? "Condiciones o comentarios..."
+                        : "Razón del rechazo..."
+                    }
+                    value={formNotes}
+                    onChange={(e) => setFormNotes(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-3 border-t border-zinc-900 pt-4">
                   <button
-                    onClick={() => void handleReject()}
-                    disabled={isSaving}
-                    className="flex-1 bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                    onClick={closeModal}
+                    className="bg-[#9a9080] hover:bg-[#ab9e8b] text-black text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer"
                   >
-                    <X className="w-4 h-4" />
-                    {isSaving ? "RECHAZANDO..." : "CONFIRMAR RECHAZO"}
+                    CANCELAR
                   </button>
-                )}
-              </div>
+                  {activeModal === "approve" ? (
+                    <button
+                      onClick={() => void handleApprove()}
+                      disabled={isSaving}
+                      className="flex-1 bg-[#4c6351] hover:bg-[#3b4d3e] disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      {isSaving ? "APROBANDO..." : "CONFIRMAR APROBACIÓN"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => void handleReject()}
+                      disabled={isSaving}
+                      className="flex-1 bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold uppercase py-2.5 px-4 shadow-[2px_2px_0_#000] border border-black cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      {isSaving ? "RECHAZANDO..." : "CONFIRMAR RECHAZO"}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          ) : null}
+        </AnimatePresence>
+      </Portal>
     </div>
   )
 }

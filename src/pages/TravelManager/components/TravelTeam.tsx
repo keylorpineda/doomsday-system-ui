@@ -231,9 +231,9 @@ export default function TravelTeam() {
       )}
 
       {/* 2. OPERATIONAL GRID */}
-      <div className="flex-1 flex gap-4 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-4 overflow-hidden">
         {/* LEFT: Roster de Personal */}
-        <div className="w-[290px] flex flex-col gap-3 shrink-0 overflow-hidden bg-[#1c1208] p-4 border-2 border-black shadow-[3px_3px_0px_#000]">
+        <div className="w-full md:w-[290px] max-h-[40%] md:max-h-none flex flex-col gap-3 shrink-0 overflow-hidden bg-[#1c1208] p-4 border-2 border-black shadow-[3px_3px_0px_#000]">
           <div className="tm-folder-header-row mb-1">
             <h4 className="tm-folder-title">REGISTRO DE PERSONAL</h4>
             <span className="text-[10px] font-mono font-medium text-white/30 uppercase tracking-wider">
@@ -335,7 +335,7 @@ export default function TravelTeam() {
         </div>
 
         {/* MIDDLE: Visualizador */}
-        <div className="flex-1 flex flex-col bg-[#1c1208] border-2 border-black overflow-hidden shadow-[3px_3px_0px_#000]">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col bg-[#1c1208] border-2 border-black overflow-hidden shadow-[3px_3px_0px_#000]">
           <AnimatePresence mode="wait">
             {selectedPerson ? (
               <motion.div
@@ -370,7 +370,7 @@ export default function TravelTeam() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto relative bg-black/25 p-4">
-                  <div className="tm-paper tm-paper-texture w-full h-full relative flex flex-col overflow-hidden shadow-2xl">
+                  <div className="tm-paper tm-paper-texture w-full min-h-full flex-none relative flex flex-col overflow-hidden shadow-2xl">
                     {/* Sello confidencial */}
                     <div className="absolute top-10 right-10 flex flex-col items-center rotate-12 select-none opacity-15 pointer-events-none z-10">
                       <div className="border-4 border-ink p-1 mb-0.5">

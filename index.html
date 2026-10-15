@@ -2,6 +2,12 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <!-- Orden de capas fijo antes de cualquier hoja: así los estilos de cada vista
+         (components) nunca quedan por debajo del reset (base) ni por encima de las
+         utilidades de Tailwind, sin importar el orden en que se carguen los CSS. -->
+    <style>
+      @layer theme, base, components, utilities;
+    </style>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
@@ -27,7 +33,7 @@
       href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Courier+Prime:wght@400;700&display=swap"
       rel="stylesheet"
       media="print"
-      onload="this.media='all'"
+      onload="this.media = 'all'"
     />
 
     <title>Gestión del Fin — Panel de Control</title>

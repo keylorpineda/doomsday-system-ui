@@ -1,5 +1,7 @@
-import { ChevronDown, LogOut, UserCircle, X } from "lucide-react"
+import { ChevronDown, LogOut, UserCircle } from "lucide-react"
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
+
+import { SectionWindow } from "./SectionWindow"
 
 import type { ComponentType, ReactNode } from "react"
 
@@ -263,44 +265,14 @@ export default function RoleShell({
         </div>
 
         {/* Ventana de la sección activa */}
-        <div
-          className="absolute inset-0 z-30 flex items-stretch justify-center bg-black/70 backdrop-blur-[2px] md:p-6"
-          style={{ display: showWindow ? "flex" : "none" }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) onCloseWindow()
-          }}
+        <SectionWindow
+          open={showWindow}
+          title={windowTitle}
+          onClose={onCloseWindow}
+          pingColor={pingColor}
         >
-          <div className="relative flex flex-col w-full h-full md:max-w-6xl bg-[#0d0c0b] border-2 border-black shadow-[6px_6px_0px_#000000] overflow-hidden">
-            <div className="shrink-0 flex items-center justify-between bg-[#121110] border-b-2 border-black px-4 py-2.5 select-none">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="relative flex h-2.5 w-2.5 shrink-0">
-                  <span
-                    className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                    style={{ background: pingColor }}
-                  />
-                  <span
-                    className="relative inline-flex rounded-full h-2.5 w-2.5"
-                    style={{ background: pingColor }}
-                  />
-                </span>
-                <span className="text-sm font-black text-[#df8120] uppercase tracking-widest truncate">
-                  {windowTitle}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={onCloseWindow}
-                title="CERRAR VENTANA"
-                className="flex items-center gap-2 px-3 py-1.5 border-2 border-black bg-[#9a9080] text-black hover:bg-red-700 hover:text-white transition-colors uppercase text-[11px] font-extrabold tracking-widest cursor-pointer"
-              >
-                <X className="w-4 h-4 shrink-0" />
-                <span className="hidden sm:inline">CERRAR</span>
-              </button>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto">{showWindow ? children : null}</div>
-          </div>
-        </div>
+          {showWindow ? children : null}
+        </SectionWindow>
       </div>
 
       {extras}

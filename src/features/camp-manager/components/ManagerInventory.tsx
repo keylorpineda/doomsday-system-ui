@@ -22,6 +22,8 @@ import { api } from "../config/api"
 
 import type { InventoryItem } from "../types/api.types"
 
+import { Portal } from "@/components/ui/Portal"
+
 interface InventoryMovement {
   id: string
   resource_id: string
@@ -756,316 +758,322 @@ export default function ManagerInventory({
 
       {/* MODAL: EDIT MINIMUM STOCK */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] relative shadow-2xl"
-          >
-            <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
-              <Sliders className="h-6 w-6" />
-              <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
-                REDIMENSIONAR RESERVA MÍNIMA
-              </h4>
-            </div>
-
-            <p className="text-sm text-zinc-400 mb-6 leading-relaxed uppercase">
-              Establece el umbral mínimo necesario para el recurso{" "}
-              <span className="font-bold text-[#e0d8cc]">{editingItem.name.toUpperCase()}</span>. Si
-              el stock cae por debajo de este límite, el sistema central emitirá una alerta de
-              defensa pasiva.
-            </p>
-
-            <form onSubmit={handleSaveMinStock} className="space-y-5">
-              <div className="space-y-2">
-                <label
-                  htmlFor="minStockInput"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  CANTIDAD_RESERVA_EXIGIDA ({editingItem.unit.toUpperCase()}):
-                </label>
-                <input
-                  id="minStockInput"
-                  type="number"
-                  min="0"
-                  value={newMinStock}
-                  onChange={(e) => setNewMinStock(parseInt(e.target.value) || 0)}
-                  className="w-full bg-[#2a2824] border-2 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-lg font-bold font-mono transition"
-                  required
-                />
+        <Portal>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] relative shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
+                <Sliders className="h-6 w-6" />
+                <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
+                  REDIMENSIONAR RESERVA MÍNIMA
+                </h4>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingItem(null)}
-                  className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
-                >
-                  [CANCELAR]
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingEdit}
-                  className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
-                  style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
-                >
-                  {submittingEdit ? "ACTUALIZANDO..." : "GUARDAR LÍMITES"}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
+              <p className="text-sm text-zinc-400 mb-6 leading-relaxed uppercase">
+                Establece el umbral mínimo necesario para el recurso{" "}
+                <span className="font-bold text-[#e0d8cc]">{editingItem.name.toUpperCase()}</span>.
+                Si el stock cae por debajo de este límite, el sistema central emitirá una alerta de
+                defensa pasiva.
+              </p>
+
+              <form onSubmit={handleSaveMinStock} className="space-y-5">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="minStockInput"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    CANTIDAD_RESERVA_EXIGIDA ({editingItem.unit.toUpperCase()}):
+                  </label>
+                  <input
+                    id="minStockInput"
+                    type="number"
+                    min="0"
+                    value={newMinStock}
+                    onChange={(e) => setNewMinStock(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#2a2824] border-2 border-black p-4 bg-transparent text-[#e0d8cc] outline-none text-lg font-bold font-mono transition"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
+                  >
+                    [CANCELAR]
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingEdit}
+                    className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
+                  >
+                    {submittingEdit ? "ACTUALIZANDO..." : "GUARDAR LÍMITES"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </Portal>
       )}
 
       {/* MODAL: REGISTER MOVEMENT */}
       {showMovementModal && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] shadow-2xl"
-          >
-            <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
-              <PlusCircle className="h-6 w-6" />
-              <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
-                REGISTRAR MOVIMIENTO DE BODEGA
-              </h4>
-            </div>
-
-            <form onSubmit={handleSubmitMovement} className="space-y-5">
-              <div className="space-y-2">
-                <label
-                  htmlFor="resourceSelect"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  RECURSO:
-                </label>
-                <select
-                  id="resourceSelect"
-                  value={movResourceId}
-                  onChange={(e) => setMovResourceId(e.target.value)}
-                  className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono uppercase"
-                  required
-                >
-                  {inventory.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name.toUpperCase()} ({item.unit})
-                    </option>
-                  ))}
-                </select>
+        <Portal>
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-2xl bg-[#161513] border-4 border-double border-[#c27c2f] p-8 md:p-10 font-mono text-[#e0d8cc] shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6 text-[#c27c2f]">
+                <PlusCircle className="h-6 w-6" />
+                <h4 className="font-black uppercase tracking-widest text-base md:text-lg">
+                  REGISTRAR MOVIMIENTO DE BODEGA
+                </h4>
               </div>
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="operationTypeSelect"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  TIPO DE OPERACIÓN:
-                </label>
-                <select
-                  id="operationTypeSelect"
-                  value={movType}
-                  onChange={(e) => setMovType(e.target.value)}
-                  className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono uppercase"
-                >
-                  {MOVEMENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="quantityInput"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  CANTIDAD:
-                </label>
-                <input
-                  id="quantityInput"
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  value={movQuantity || ""}
-                  onChange={(e) => setMovQuantity(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono"
-                  placeholder="0.000"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="descriptionInput"
-                  className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
-                >
-                  DESCRIPCIÓN (OPCIONAL):
-                </label>
-                <textarea
-                  id="descriptionInput"
-                  value={movDescription}
-                  onChange={(e) => setMovDescription(e.target.value)}
-                  maxLength={200}
-                  rows={3}
-                  className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-base font-mono resize-none"
-                  placeholder="Ej: Recepción convoy norte..."
-                />
-              </div>
-
-              {errorState && (
-                <div className="text-sm text-red-400 uppercase border border-[#9c2720]/50 bg-[#9c2720]/10 p-3">
-                  {errorState}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMovementModal(false)
-                    setErrorState(null)
-                  }}
-                  className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
-                >
-                  [CANCELAR]
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingMov}
-                  className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
-                  style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
-                >
-                  {submittingMov ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" /> PROCESANDO...
-                    </>
-                  ) : (
-                    "CONFIRMAR OPERACIÓN"
-                  )}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-
-      {/* MODAL: DAILY PROCESS CONFIRMATION */}
-      {showConfirmDaily && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-lg bg-[#161513] border-4 border-double border-[#9c2720] p-6 font-mono text-[#e0d8cc] shadow-2xl relative"
-          >
-            <div className="flex items-center gap-2 border-b-2 border-black pb-3 mb-4 text-[#9c2720]">
-              <ShieldAlert className="h-5.5 w-5.5 animate-bounce" />
-              <h4 className="font-bold uppercase tracking-widest text-xs">
-                AUTORIZACIÓN CRÍTICA DE CIERRE SOLAR
-              </h4>
-            </div>
-
-            {dailyResponse ? (
-              <div className="space-y-4 py-2">
-                <div className="bg-[#9c2720]/20 border-l-4 border-[#9c2720] p-3.5 text-xs text-red-300 space-y-1">
-                  <div className="font-bold uppercase tracking-wider">
-                    {dailyResponse.message.toUpperCase()}
-                  </div>
-                  <p className="uppercase">
-                    Consumos y producciones calculadas y consolidadas en base de datos.
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm bg-[#1a1a1a] border-2 border-black p-3 text-zinc-300">
-                  <div>
-                    🍔 COMIDA PRODUCIDA:{" "}
-                    <span className="font-bold text-emerald-400">
-                      +{dailyResponse.metrics.foodProduced}
-                    </span>
-                  </div>
-                  <div>
-                    👥 COMIDA CONSUMIDA:{" "}
-                    <span className="font-bold text-[#9c2720]">
-                      -{dailyResponse.metrics.foodConsumed}
-                    </span>
-                  </div>
-                  <div>
-                    💧 AGUA PRODUCIDA:{" "}
-                    <span className="font-bold text-emerald-400">
-                      +{dailyResponse.metrics.waterProduced}
-                    </span>
-                  </div>
-                  <div>
-                    🏃‍♂️ AGUA CONSUMIDA:{" "}
-                    <span className="font-bold text-[#9c2720]">
-                      -{dailyResponse.metrics.waterConsumed}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-zinc-500 text-center animate-pulse uppercase tracking-widest font-bold">
-                  RECONSOLIDANDO STOCK... CERRANDO CONEXIÓN.
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-zinc-400 leading-relaxed mb-4 uppercase">
-                  ¡ATENCIÓN ADMINISTRADOR! Estás a punto de forzar el{" "}
-                  <span className="text-[#9c2720] font-bold">Cierre del Ciclo Solar</span>. Esto
-                  ejecutará el consumo biológico diario de toda la fuerza de trabajo habitando el
-                  búnker, recolectará las cosechas hidropónicas agrícolas y quemará combustible
-                  diésel para los generadores de oxígeno.
-                </p>
-
-                <div className="bg-[#1a1a1a] border border-black p-4 mb-4 text-left text-sm space-y-1.5 text-zinc-400">
-                  <span className="text-sm text-[#c27c2f] font-bold block uppercase tracking-wider">
-                    MÁRGENES OPERACIONALES (CÁLCULO DINÁMICO):
-                  </span>
-                  <div>
-                    • El consumo de alimento y agua es calculado{" "}
-                    <span className="text-emerald-400 font-bold">
-                      dinámicamente por el Servidor Central
-                    </span>{" "}
-                    basándose en la cantidad de habitantes y su factor de salud.
-                  </div>
-                  <div>
-                    • El gasto de combustible diésel se calculará según la cantidad de generadores
-                    activos.
-                  </div>
-                  <div>
-                    • Las cosechas hidropónicas sumarán recursos dependiendo de los trabajadores
-                    asignados al sector agrícola.
-                  </div>
+              <form onSubmit={handleSubmitMovement} className="space-y-5">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="resourceSelect"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    RECURSO:
+                  </label>
+                  <select
+                    id="resourceSelect"
+                    value={movResourceId}
+                    onChange={(e) => setMovResourceId(e.target.value)}
+                    className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono uppercase"
+                    required
+                  >
+                    {inventory.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name.toUpperCase()} ({item.unit})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="space-y-2">
+                  <label
+                    htmlFor="operationTypeSelect"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    TIPO DE OPERACIÓN:
+                  </label>
+                  <select
+                    id="operationTypeSelect"
+                    value={movType}
+                    onChange={(e) => setMovType(e.target.value)}
+                    className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono uppercase"
+                  >
+                    {MOVEMENT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="quantityInput"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    CANTIDAD:
+                  </label>
+                  <input
+                    id="quantityInput"
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    value={movQuantity || ""}
+                    onChange={(e) => setMovQuantity(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-lg font-bold font-mono"
+                    placeholder="0.000"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="descriptionInput"
+                    className="text-sm text-zinc-400 uppercase font-black block tracking-wider"
+                  >
+                    DESCRIPCIÓN (OPCIONAL):
+                  </label>
+                  <textarea
+                    id="descriptionInput"
+                    value={movDescription}
+                    onChange={(e) => setMovDescription(e.target.value)}
+                    maxLength={200}
+                    rows={3}
+                    className="w-full bg-[#2a2824] border-2 border-black p-4 text-[#e0d8cc] outline-none text-base font-mono resize-none"
+                    placeholder="Ej: Recepción convoy norte..."
+                  />
+                </div>
+
+                {errorState && (
+                  <div className="text-sm text-red-400 uppercase border border-[#9c2720]/50 bg-[#9c2720]/10 p-3">
+                    {errorState}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowConfirmDaily(false)}
-                    disabled={dailyProcessing}
-                    className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-xs py-2 font-black transition"
+                    onClick={() => {
+                      setShowMovementModal(false)
+                      setErrorState(null)
+                    }}
+                    className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-sm py-3 font-black transition"
                   >
-                    [ABORTAR SECUENCIA]
+                    [CANCELAR]
                   </button>
                   <button
-                    type="button"
-                    onClick={() => handleForceDailyProcess()}
-                    disabled={dailyProcessing}
-                    className="flex-1 border-2 border-black uppercase text-xs py-2 hover:bg-[#801815] transition font-black flex items-center justify-center gap-2"
-                    style={{ backgroundColor: "#9c2720", color: "#ffffff" }}
+                    type="submit"
+                    disabled={submittingMov}
+                    className="flex-1 border-2 border-black uppercase text-sm py-3 hover:bg-[#a96821] transition font-black flex items-center justify-center gap-2"
+                    style={{ backgroundColor: "#c27c2f", color: "#e0d8cc" }}
                   >
-                    {dailyProcessing ? (
+                    {submittingMov ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" /> PROCESANDO...
                       </>
                     ) : (
-                      "EJECUTAR CONSUMOS (CIERRE)"
+                      "CONFIRMAR OPERACIÓN"
                     )}
                   </button>
                 </div>
-              </>
-            )}
-          </motion.div>
-        </div>
+              </form>
+            </motion.div>
+          </div>
+        </Portal>
+      )}
+
+      {/* MODAL: DAILY PROCESS CONFIRMATION */}
+      {showConfirmDaily && (
+        <Portal>
+          <div className="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-lg bg-[#161513] border-4 border-double border-[#9c2720] p-6 font-mono text-[#e0d8cc] shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto"
+            >
+              <div className="flex items-center gap-2 border-b-2 border-black pb-3 mb-4 text-[#9c2720]">
+                <ShieldAlert className="h-5.5 w-5.5 animate-bounce" />
+                <h4 className="font-bold uppercase tracking-widest text-xs">
+                  AUTORIZACIÓN CRÍTICA DE CIERRE SOLAR
+                </h4>
+              </div>
+
+              {dailyResponse ? (
+                <div className="space-y-4 py-2">
+                  <div className="bg-[#9c2720]/20 border-l-4 border-[#9c2720] p-3.5 text-xs text-red-300 space-y-1">
+                    <div className="font-bold uppercase tracking-wider">
+                      {dailyResponse.message.toUpperCase()}
+                    </div>
+                    <p className="uppercase">
+                      Consumos y producciones calculadas y consolidadas en base de datos.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm bg-[#1a1a1a] border-2 border-black p-3 text-zinc-300">
+                    <div>
+                      🍔 COMIDA PRODUCIDA:{" "}
+                      <span className="font-bold text-emerald-400">
+                        +{dailyResponse.metrics.foodProduced}
+                      </span>
+                    </div>
+                    <div>
+                      👥 COMIDA CONSUMIDA:{" "}
+                      <span className="font-bold text-[#9c2720]">
+                        -{dailyResponse.metrics.foodConsumed}
+                      </span>
+                    </div>
+                    <div>
+                      💧 AGUA PRODUCIDA:{" "}
+                      <span className="font-bold text-emerald-400">
+                        +{dailyResponse.metrics.waterProduced}
+                      </span>
+                    </div>
+                    <div>
+                      🏃‍♂️ AGUA CONSUMIDA:{" "}
+                      <span className="font-bold text-[#9c2720]">
+                        -{dailyResponse.metrics.waterConsumed}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500 text-center animate-pulse uppercase tracking-widest font-bold">
+                    RECONSOLIDANDO STOCK... CERRANDO CONEXIÓN.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-4 uppercase">
+                    ¡ATENCIÓN ADMINISTRADOR! Estás a punto de forzar el{" "}
+                    <span className="text-[#9c2720] font-bold">Cierre del Ciclo Solar</span>. Esto
+                    ejecutará el consumo biológico diario de toda la fuerza de trabajo habitando el
+                    búnker, recolectará las cosechas hidropónicas agrícolas y quemará combustible
+                    diésel para los generadores de oxígeno.
+                  </p>
+
+                  <div className="bg-[#1a1a1a] border border-black p-4 mb-4 text-left text-sm space-y-1.5 text-zinc-400">
+                    <span className="text-sm text-[#c27c2f] font-bold block uppercase tracking-wider">
+                      MÁRGENES OPERACIONALES (CÁLCULO DINÁMICO):
+                    </span>
+                    <div>
+                      • El consumo de alimento y agua es calculado{" "}
+                      <span className="text-emerald-400 font-bold">
+                        dinámicamente por el Servidor Central
+                      </span>{" "}
+                      basándose en la cantidad de habitantes y su factor de salud.
+                    </div>
+                    <div>
+                      • El gasto de combustible diésel se calculará según la cantidad de generadores
+                      activos.
+                    </div>
+                    <div>
+                      • Las cosechas hidropónicas sumarán recursos dependiendo de los trabajadores
+                      asignados al sector agrícola.
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmDaily(false)}
+                      disabled={dailyProcessing}
+                      className="flex-1 border-2 border-black bg-transparent text-zinc-400 hover:text-white uppercase text-xs py-2 font-black transition"
+                    >
+                      [ABORTAR SECUENCIA]
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleForceDailyProcess()}
+                      disabled={dailyProcessing}
+                      className="flex-1 border-2 border-black uppercase text-xs py-2 hover:bg-[#801815] transition font-black flex items-center justify-center gap-2"
+                      style={{ backgroundColor: "#9c2720", color: "#ffffff" }}
+                    >
+                      {dailyProcessing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" /> PROCESANDO...
+                        </>
+                      ) : (
+                        "EJECUTAR CONSUMOS (CIERRE)"
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </div>
+        </Portal>
       )}
     </motion.div>
   )

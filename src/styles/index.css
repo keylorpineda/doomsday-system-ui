@@ -148,10 +148,28 @@
   --font-body: "Inter", sans-serif;
 }
 
-* {
+/*
+ * Reset dentro de @layer base: sin capa, este selector universal le ganaba a
+ * TODAS las utilidades de Tailwind (que viven en @layer utilities) y anulaba
+ * cada p-*, m-*, mx-auto… de la app, dejando formularios y botones pegados a
+ * los bordes o recortados.
+ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+}
+
+/*
+   El gafete del login se diseñó con el reset antiguo (sin capa), que anulaba
+   sus utilidades de espaciado. Se conserva ese aspecto aprobado solo aquí.
+*/
+.badge-login,
+.badge-login * {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 body {
